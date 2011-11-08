@@ -30,7 +30,6 @@ import org.apache.whirr.Cluster;
 import org.apache.whirr.ClusterController;
 import org.apache.whirr.ClusterControllerFactory;
 import org.apache.whirr.ClusterSpec;
-import org.apache.whirr.Cluster.Instance;
 import org.apache.whirr.command.AbstractClusterCommand;
 import org.apache.whirr.util.WhirrUtils;
 

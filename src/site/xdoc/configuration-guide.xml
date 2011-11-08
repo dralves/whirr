@@ -615,5 +615,87 @@ xsi:schemaLocation="http://maven.apache.org/XDOC/2.0 http://maven.apache.org/xsd
         <td>Warning: clusters do not run behind a firewall.</td>
       </tr>
     </table>
+    <p>
+      <a name="jclouds-specific-config"></a>
+    </p>
+    <subsection name="JClouds specific and relevant configuration options"></subsection>
+    <table border="0">
+      <tr valign="top">
+        <th>
+          <b>Name</b>
+        </th>
+        <th>
+          <b>Default</b>
+        </th>
+        <th>
+          <b>Unit</b>
+        </th>
+        <th>
+          <b>Description</b>
+        </th>
+      </tr>
+      <tr valign="top">
+        <td>
+          <tt>jclouds.compute.timeout.node-terminated</tt>
+        </td>
+        <td>
+          <tt>30000 (30 sec.)</tt>
+        </td>
+        <td>
+          <tt>msec</tt>
+        </td>
+        <td>The max. time to wait for nodes to be terminated</td>
+      </tr>
+      <tr valign="top">
+        <td>
+          <tt>jclouds.compute.timeout.node-running</tt>
+        </td>
+        <td>
+          <tt>120000 (2 min.)</tt>
+        </td>
+        <td>
+          <tt>msec</tt>
+        </td>
+        <td>The max. time to wait for nodes to be in running state</td>
+      </tr>
+      <tr valign="top">
+        <td>
+          <tt>jclouds.compute.timeout.script-complete</tt>
+        </td>
+        <td>
+          <tt>600000 (10 min.)</tt>
+        </td>
+        <td>
+          <tt>msec</tt>
+        </td>
+        <td>The max. time to wait for a script to complete execution</td>
+      </tr>
+      <tr valign="top">
+        <td>
+          <tt>jclouds.compute.timeout.port-open</tt>
+        </td>
+        <td>
+          <tt>30000 (30 sec.)</tt>
+        </td>
+        <td>
+          <tt>msec</tt>
+        </td>
+        <td>The max. time to wait for nodes to wait for the ssh port to open on newly
+        lauched nodes</td>
+      </tr>
+      <tr valign="top">
+        <td>
+          <tt>jclouds.compute.blacklist-nodes</tt>
+        </td>
+        <td>
+        </td>
+        <td>
+          <tt>--</tt>
+        </td>
+        <td>comma-separated list of nodes that we shouldn't attempt to list 
+        as they are dead in the provider for some reason.</td>
+      </tr>
+      
+    </table>
   </body>
 </document>

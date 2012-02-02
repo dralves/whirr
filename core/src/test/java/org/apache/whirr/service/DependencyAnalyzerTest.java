@@ -18,6 +18,9 @@
 
 package org.apache.whirr.service;
 
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -72,17 +75,13 @@ public class DependencyAnalyzerTest {
   }
 
   @Test
-  public void testLinearDependecies() throws IOException,
-      ConfigurationException, JSchException {
+  public void testRootServiceOnly() throws IOException, ConfigurationException,
+      JSchException {
     CompositeConfiguration config = new CompositeConfiguration();
     config.setProperty("whirr.provider", "stub");
     config.setProperty("whirr.cluster-name", "stub-test");
-    config.setProperty("whirr.instance-templates",
-        "1 service-b");
+    config.setProperty("whirr.instance-templates", "1 service-a");
     config.setProperty("whirr.state-store", "memory");
-
-    Map<String, ClusterActionHandler> handlerMap = HandlerMapFactory.create();
-    System.out.println(handlerMap.get("service-c"));
 
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
@@ -90,12 +89,33 @@ public class DependencyAnalyzerTest {
     List<Set<String>> stages = analyzer.getStages(
         clusterSpec.getInstanceTemplates(), HandlerMapFactory.create());
 
-    int counter = 0;
-    for (Set<String> stage : stages) {
-      System.out.println("new stage " + counter++);
-      for (String role : stage) {
-        System.out.println(role);
-      }
-    }
+    assertEquals("Was expecting a single stage", 1, stages.size());
+    assertTrue("Was expecting service-a to be in the first stage", stages
+        .get(0).contains("service-a"));
+  }
+
+  @Test
+  public void testLinearDependecies() throws IOException,
+      ConfigurationException, JSchException {
+    CompositeConfiguration config = new CompositeConfiguration();
+    config.setProperty("whirr.provider", "stub");
+    config.setProperty("whirr.cluster-name", "stub-test");
+    config.setProperty("whirr.instance-templates",
+        "1 service-b, 1 service-a, 1 service-c");
+    config.setProperty("whirr.state-store", "memory");
+
+    ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
+
+    DependencyAnalyzer analyzer = new DependencyAnalyzer();
+    List<Set<String>> stages = analyzer.getStages(
+        clusterSpec.getInstanceTemplates(), HandlerMapFactory.create());
+
+    assertEquals("Was expecting three stages", 3, stages.size());
+    assertTrue("Was expecting service-a to be in the first stage", stages
+        .get(0).contains("service-a"));
+    assertTrue("Was expecting service-b to be in the second stage",
+        stages.get(1).contains("service-b"));
+    assertTrue("Was expecting service-c to be in the third stage", stages
+        .get(2).contains("service-c"));
   }
 }

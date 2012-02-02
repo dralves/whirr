@@ -61,10 +61,10 @@ public class DependencyAnalyzer {
     while (true) {
       nextStage = processNextStage(nextStage, levelCounter++, levelMappings,
           rolesGraph);
-      stages.add(nextStage);
       if (nextStage.isEmpty()) {
         break;
       }
+      stages.add(nextStage);
     }
     return stages;
   }
@@ -100,6 +100,7 @@ public class DependencyAnalyzer {
     if (handlerMap.get(role) == null) {
       throw new ServiceNotFoundException(role);
     }
+    rolesGraph.addVertex(role);
     // get this role's parents
     Set<String> parents = handlerMap.get(role).getDependedOnRoles();
     // make sure the parents are in the graph if any.
@@ -109,7 +110,6 @@ public class DependencyAnalyzer {
       }
       rolesGraph.addEdge(edgeCounter++, parent, role);
     }
-
   }
 
   private Graph<String, Integer> buildGraph(Set<String> templateRoles,

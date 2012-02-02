@@ -13,4 +13,7 @@ org.apache.whirr.service.NoopClusterActionHandler
 org.apache.whirr.actions.ScriptBasedClusterActionTest$Noop1ClusterActionHandler
 org.apache.whirr.service.DryRunModuleTest$Noop2ClusterActionHandler
 org.apache.whirr.service.DryRunModuleTest$Noop3ClusterActionHandler
+org.apache.whirr.service.DependencyAnalyzerTest$TestServiceA
+org.apache.whirr.service.DependencyAnalyzerTest$TestServiceB
+org.apache.whirr.service.DependencyAnalyzerTest$TestServiceC
 org.apache.whirr.actions.integration.PhaseExecutionBarrierTest$PhaseBarrierTestActionHandler

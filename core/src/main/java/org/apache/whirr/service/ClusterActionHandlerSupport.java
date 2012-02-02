@@ -22,6 +22,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.Set;
 
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
@@ -43,6 +45,11 @@ public abstract class ClusterActionHandlerSupport extends ClusterActionHandler {
 
   private static final Logger LOG =
     LoggerFactory.getLogger(ClusterActionHandler.class);
+  
+  @Override
+  public Set<String> getDependedOnRoles() {
+    return Collections.emptySet();
+  }
 
   @Override
   public void beforeAction(ClusterActionEvent event)

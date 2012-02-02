@@ -19,6 +19,7 @@
 package org.apache.whirr.service;
 
 import java.io.IOException;
+import java.util.Set;
 
 import com.google.common.base.Objects;
 
@@ -39,7 +40,26 @@ public abstract class ClusterActionHandler {
   public static final String CLEANUP_ACTION = "cleanup";
   public static final String DESTROY_ACTION = "destroy";
 
+  /**
+   * Returns the name of the role/service implemented by this
+   * {@link ClusterActionHandler}. Role names must be globally unique.
+   * 
+   * @return
+   */
   public abstract String getRole();
+
+  /**
+   * Returns the set of roles this role depends on. This role will not
+   * configure/start:
+   * <ul>
+   * <li>1 - If any of the roles in the dependency list is missing or not set to
+   * be installed</li>
+   * <li>2 - Before any of the roles in the dependency list</li>
+   * </ul>
+   * 
+   * @return
+   */
+  public abstract Set<String> getDependedOnRoles();
   
   /**
    * Called before the action is performed, giving the implementation an

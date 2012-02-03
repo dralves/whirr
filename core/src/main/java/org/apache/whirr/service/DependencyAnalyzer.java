@@ -18,6 +18,7 @@
 
 package org.apache.whirr.service;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,10 +39,12 @@ import edu.uci.ics.jung.graph.Graph;
  */
 public class DependencyAnalyzer {
 
-  private int edgeCounter = 0;
+  private static int edgeCounter;
 
-  public List<Set<String>> getStages(List<InstanceTemplate> instanceTemplates,
+  public static List<Set<String>> buildStages(
+      Collection<InstanceTemplate> instanceTemplates,
       Map<String, ClusterActionHandler> handlerMap) {
+    edgeCounter = 0;
     Graph<String, Integer> rolesGraph = buildGraph(
         collectRolesFromTemplates(instanceTemplates), handlerMap);
     Map<String, Integer> levelMappings = Maps.newLinkedHashMap();
@@ -69,8 +72,9 @@ public class DependencyAnalyzer {
     return stages;
   }
 
-  private Set<String> processNextStage(Set<String> parents, int currentLevel,
-      Map<String, Integer> levelMappings, Graph<String, Integer> rolesGraph) {
+  private static Set<String> processNextStage(Set<String> parents,
+      int currentLevel, Map<String, Integer> levelMappings,
+      Graph<String, Integer> rolesGraph) {
     Set<String> children = Sets.newLinkedHashSet();
     for (String parent : parents) {
       children.addAll(rolesGraph.getSuccessors(parent));
@@ -84,8 +88,8 @@ public class DependencyAnalyzer {
     return children;
   }
 
-  private Set<String> collectRolesFromTemplates(
-      List<InstanceTemplate> instanceTemplates) {
+  private static Set<String> collectRolesFromTemplates(
+      Collection<InstanceTemplate> instanceTemplates) {
     // so that start orders are as deterministic as possible
     Set<String> roles = Sets.newLinkedHashSet();
     for (InstanceTemplate template : instanceTemplates) {
@@ -94,7 +98,7 @@ public class DependencyAnalyzer {
     return roles;
   }
 
-  private void addRoleAndParents(String role,
+  private static void addRoleAndParents(String role,
       Graph<String, Integer> rolesGraph,
       Map<String, ClusterActionHandler> handlerMap) {
     if (handlerMap.get(role) == null) {
@@ -102,7 +106,7 @@ public class DependencyAnalyzer {
     }
     rolesGraph.addVertex(role);
     // get this role's parents
-    Set<String> parents = handlerMap.get(role).getDependedOnRoles();
+    Set<String> parents = handlerMap.get(role).getRequiredRoles();
     // make sure the parents are in the graph if any.
     for (String parent : parents) {
       if (!rolesGraph.containsVertex(parent)) {
@@ -112,7 +116,7 @@ public class DependencyAnalyzer {
     }
   }
 
-  private Graph<String, Integer> buildGraph(Set<String> templateRoles,
+  private static Graph<String, Integer> buildGraph(Set<String> templateRoles,
       Map<String, ClusterActionHandler> handlerMap) {
     Graph<String, Integer> rolesGraph = new DirectedSparseGraph<String, Integer>();
     for (String role : templateRoles) {

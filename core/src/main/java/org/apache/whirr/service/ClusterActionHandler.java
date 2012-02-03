@@ -59,7 +59,7 @@ public abstract class ClusterActionHandler {
    * 
    * @return
    */
-  public abstract Set<String> getDependedOnRoles();
+  public abstract Set<String> getRequiredRoles();
   
   /**
    * Called before the action is performed, giving the implementation an

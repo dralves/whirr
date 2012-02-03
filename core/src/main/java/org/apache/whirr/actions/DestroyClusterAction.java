@@ -21,6 +21,7 @@ package org.apache.whirr.actions;
 import static org.jclouds.compute.predicates.NodePredicates.inGroup;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.whirr.ClusterSpec;
@@ -56,9 +57,8 @@ public class DestroyClusterAction extends ScriptBasedClusterAction {
 
   @Override
   protected void postRunScriptsActions(
-      Map<InstanceTemplate, ClusterActionEvent> eventMap) throws IOException {
-    ClusterSpec clusterSpec = eventMap.values().iterator().next()
-        .getClusterSpec();
+      List<List<ClusterActionEvent>> eventsPerStage) throws IOException {
+    ClusterSpec clusterSpec = eventsPerStage.get(0).get(0).getClusterSpec();
     LOG.info("Destroying " + clusterSpec.getClusterName() + " cluster");
     ComputeService computeService = getCompute().apply(clusterSpec)
         .getComputeService();

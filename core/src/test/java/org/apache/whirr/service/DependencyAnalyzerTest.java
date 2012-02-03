@@ -23,7 +23,6 @@ import static junit.framework.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.configuration.CompositeConfiguration;
@@ -54,7 +53,7 @@ public class DependencyAnalyzerTest {
     }
 
     @Override
-    public Set<String> getDependedOnRoles() {
+    public Set<String> getRequiredRoles() {
       return Sets.newHashSet("service-a");
     }
 
@@ -68,7 +67,7 @@ public class DependencyAnalyzerTest {
     }
 
     @Override
-    public Set<String> getDependedOnRoles() {
+    public Set<String> getRequiredRoles() {
       return Sets.newHashSet("service-b");
     }
 
@@ -85,8 +84,7 @@ public class DependencyAnalyzerTest {
 
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
-    DependencyAnalyzer analyzer = new DependencyAnalyzer();
-    List<Set<String>> stages = analyzer.getStages(
+    List<Set<String>> stages = DependencyAnalyzer.buildStages(
         clusterSpec.getInstanceTemplates(), HandlerMapFactory.create());
 
     assertEquals("Was expecting a single stage", 1, stages.size());
@@ -106,8 +104,7 @@ public class DependencyAnalyzerTest {
 
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
-    DependencyAnalyzer analyzer = new DependencyAnalyzer();
-    List<Set<String>> stages = analyzer.getStages(
+    List<Set<String>> stages = DependencyAnalyzer.buildStages(
         clusterSpec.getInstanceTemplates(), HandlerMapFactory.create());
 
     assertEquals("Was expecting three stages", 3, stages.size());

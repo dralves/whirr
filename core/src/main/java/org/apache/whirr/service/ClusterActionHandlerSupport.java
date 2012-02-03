@@ -47,7 +47,7 @@ public abstract class ClusterActionHandlerSupport extends ClusterActionHandler {
     LoggerFactory.getLogger(ClusterActionHandler.class);
   
   @Override
-  public Set<String> getDependedOnRoles() {
+  public Set<String> getRequiredRoles() {
     return Collections.emptySet();
   }
 

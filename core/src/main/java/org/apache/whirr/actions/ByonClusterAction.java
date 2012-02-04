@@ -72,16 +72,17 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
   }
   
   @Override
-  protected void doAction(Map<InstanceTemplate, ClusterActionEvent> eventMap)
-      throws IOException, InterruptedException {
-    
-    ExecutorService executorService = Executors.newCachedThreadPool();
-    
-    Set<Future<Void>> futures = Sets.newHashSet();
+  protected void doAction(ClusterSpec spec, Cluster cluster,
+      List<List<ClusterActionEvent>> eventsPerStage)
+      throws InterruptedException, IOException {
 
     List<NodeMetadata> nodes = Lists.newArrayList();
     int numberAllocated = 0;
     Set<Instance> allInstances = Sets.newLinkedHashSet();
+    final Credentials credentials = new Credentials(spec.getClusterUser(),
+        spec.getPrivateKey());
+    final ComputeService computeService = getCompute().apply(spec)
+        .getComputeService();
 
     for (Entry<InstanceTemplate, ClusterActionEvent> entry : eventMap.entrySet()) {
 
@@ -90,11 +91,6 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
       if (statementBuilder.isEmpty()) {
         continue; // skip
       }
-
-      final ComputeServiceContext computeServiceContext = getCompute().apply(clusterSpec);
-      final ComputeService computeService = computeServiceContext.getComputeService();
-
-      Credentials credentials = new Credentials(clusterSpec.getIdentity(), clusterSpec.getCredential());
       
       if (numberAllocated == 0) {
         for (ComputeMetadata compute : computeService.listNodes()) {

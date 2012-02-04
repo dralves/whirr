@@ -157,6 +157,10 @@ public class StatementBuilder {
       addStatement(statement);
     }
   }
+  
+  public List<Statement> getStatements() {
+    return statements;
+  }
 
   public void addExport(String key, String value) {
     exports.put(key, value);

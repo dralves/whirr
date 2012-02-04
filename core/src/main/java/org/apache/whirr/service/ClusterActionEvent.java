@@ -18,39 +18,44 @@
 
 package org.apache.whirr.service;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+
 import org.apache.whirr.Cluster;
 import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.InstanceTemplate;
 import org.apache.whirr.service.jclouds.StatementBuilder;
-import org.apache.whirr.service.jclouds.TemplateBuilderStrategy;
 import org.jclouds.compute.ComputeServiceContext;
 
 import com.google.common.base.Function;
 
 /**
- * An event object which is fired when a {@link org.apache.whirr.ClusterAction} occurs. 
+ * An event object which is fired when a {@link org.apache.whirr.ClusterAction}
+ * occurs.
  */
 public class ClusterActionEvent {
-  
+
   private String action;
   private ClusterSpec clusterSpec;
   private InstanceTemplate instanceTemplate;
   private Cluster cluster;
   private StatementBuilder statementBuilder;
-  private TemplateBuilderStrategy templateBuilderStrategy =
-    new TemplateBuilderStrategy();
   private FirewallManager firewallManager;
   private Function<ClusterSpec, ComputeServiceContext> getCompute;
-  
+  private Callable<?> eventCallable;
+  private Future<?> eventFuture;
+
   public ClusterActionEvent(String action, ClusterSpec clusterSpec,
-      InstanceTemplate instanceTemplate, Cluster cluster, 
+      InstanceTemplate instanceTemplate, Cluster cluster,
       Function<ClusterSpec, ComputeServiceContext> getCompute,
       FirewallManager firewallManager) {
-    this(action, clusterSpec, instanceTemplate, cluster, null, getCompute, firewallManager);
+    this(action, clusterSpec, instanceTemplate, cluster, null, getCompute,
+        firewallManager);
   }
-  
+
   public ClusterActionEvent(String action, ClusterSpec clusterSpec,
-      InstanceTemplate instanceTemplate, Cluster cluster, StatementBuilder statementBuilder,
+      InstanceTemplate instanceTemplate, Cluster cluster,
+      StatementBuilder statementBuilder,
       Function<ClusterSpec, ComputeServiceContext> getCompute,
       FirewallManager firewallManager) {
     this.action = action;
@@ -61,7 +66,7 @@ public class ClusterActionEvent {
     this.getCompute = getCompute;
     this.firewallManager = firewallManager;
   }
-  
+
   public Cluster getCluster() {
     return cluster;
   }
@@ -77,30 +82,37 @@ public class ClusterActionEvent {
   public ClusterSpec getClusterSpec() {
     return clusterSpec;
   }
-  
+
   public InstanceTemplate getInstanceTemplate() {
     return instanceTemplate;
   }
-  
+
   public Function<ClusterSpec, ComputeServiceContext> getCompute() {
     return getCompute;
   }
-   
+
   public StatementBuilder getStatementBuilder() {
     return statementBuilder;
   }
 
-  public TemplateBuilderStrategy getTemplateBuilderStrategy() {
-    return templateBuilderStrategy;
-  }
-
-  public void setTemplateBuilderStrategy(
-      TemplateBuilderStrategy templateBuilderStrategy) {
-    this.templateBuilderStrategy = templateBuilderStrategy;
-  }
-  
   public FirewallManager getFirewallManager() {
     return firewallManager;
+  }
+
+  public void setEventCallable(Callable<?> eventCallable) {
+    this.eventCallable = eventCallable;
+  }
+
+  public void setEventFuture(Future<?> eventFuture) {
+    this.eventFuture = eventFuture;
+  }
+
+  public Callable<?> getEventCallable() {
+    return eventCallable;
+  }
+
+  public Future<?> getEventFuture() {
+    return eventFuture;
   }
 
 }

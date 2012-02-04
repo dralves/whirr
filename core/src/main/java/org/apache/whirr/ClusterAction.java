@@ -18,11 +18,39 @@
 
 package org.apache.whirr;
 
-import java.io.IOException;
+import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.IOException;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import javax.annotation.Nullable;
+
+import org.apache.whirr.Cluster.Instance;
+import org.apache.whirr.service.ClusterActionEvent;
+import org.apache.whirr.service.ClusterActionHandler;
+import org.apache.whirr.service.DependencyAnalyzer;
+import org.apache.whirr.service.FirewallManager;
+import org.apache.whirr.service.jclouds.StatementBuilder;
 import org.jclouds.compute.ComputeServiceContext;
 
 import com.google.common.base.Function;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ComputationException;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 /**
  * Performs an action on a cluster. Example actions include bootstrapping
@@ -30,20 +58,250 @@ import com.google.common.base.Function;
  * cluster.
  */
 public abstract class ClusterAction {
-  
-  private final Function<ClusterSpec, ComputeServiceContext> getCompute;
 
-  protected ClusterAction(final Function<ClusterSpec, ComputeServiceContext> getCompute) {
-    this.getCompute = getCompute;
+  private final Function<ClusterSpec, ComputeServiceContext> getCompute;
+  protected final Map<String, ClusterActionHandler> handlerMap;
+  protected final ImmutableSet<String> targetInstanceIds;
+  protected final ImmutableSet<String> targetRoles;
+  private static final AtomicInteger eventThreadCounter = new AtomicInteger();
+  protected static final ExecutorService executors = Executors
+      .newCachedThreadPool(new ThreadFactory() {
+        @Override
+        public Thread newThread(Runnable r) {
+          Thread thread = new Thread(r, "ClusterEventThread["
+              + eventThreadCounter.getAndIncrement() + "]");
+          thread.setDaemon(true);
+          return thread;
+        }
+      });
+
+  static {
+    Runtime.getRuntime().addShutdownHook(new Thread() {
+      @Override
+      public void run() {
+        executors.shutdown();
+      }
+    });
   }
-  
+
+  protected ClusterAction(
+      final Function<ClusterSpec, ComputeServiceContext> getCompute) {
+    this.getCompute = getCompute;
+    this.handlerMap = HandlerMapFactory.create();
+    this.targetInstanceIds = null;
+    this.targetRoles = null;
+  }
+
+  protected ClusterAction(
+      Function<ClusterSpec, ComputeServiceContext> getCompute,
+      Map<String, ClusterActionHandler> handlerMap) {
+    this(getCompute, handlerMap, ImmutableSet.<String> of(), ImmutableSet
+        .<String> of());
+  }
+
+  protected ClusterAction(
+      Function<ClusterSpec, ComputeServiceContext> getCompute,
+      Map<String, ClusterActionHandler> handlerMap, Set<String> targetRoles,
+      Set<String> targetInstanceIds) {
+    this.getCompute = getCompute;
+    this.handlerMap = checkNotNull(handlerMap, "handlerMap");
+    this.targetRoles = ImmutableSet.copyOf(checkNotNull(targetRoles,
+        "targetRoles"));
+    this.targetInstanceIds = ImmutableSet.copyOf(checkNotNull(
+        targetInstanceIds, "targetInstanceIds"));
+  }
+
   protected Function<ClusterSpec, ComputeServiceContext> getCompute() {
     return getCompute;
   }
-  
+
   protected abstract String getAction();
 
-  public abstract Cluster execute(ClusterSpec clusterSpec, Cluster cluster)
-      throws IOException, InterruptedException;
-  
+  protected void doAction(ClusterSpec spec, Cluster cluster,
+      List<List<ClusterActionEvent>> eventsPerStage)
+      throws InterruptedException, IOException{}
+
+  public Cluster execute(ClusterSpec clusterSpec, Cluster cluster)
+      throws IOException, InterruptedException {
+
+    Map<InstanceTemplate, ClusterActionEvent> eventMap = Maps.newHashMap();
+    Cluster newCluster = cluster;
+
+    // In order to segregate dependency execution we need to have a separate
+    // ClusterActionEvent not only per instance template but also per role.
+    List<Set<String>> stages = DependencyAnalyzer.buildStages(
+        clusterSpec.getInstanceTemplates(), handlerMap);
+
+    List<List<ClusterActionEvent>> eventsPerStage = Lists.newArrayList();
+
+    for (Set<String> stageRoles : stages) {
+
+      // find the templates with roles in this stage
+      List<InstanceTemplate> stageTemplates = findTemplatesWithRoles(
+          clusterSpec.getInstanceTemplates(), stageRoles);
+
+      List<ClusterActionEvent> stageEvents = Lists.newArrayList();
+
+      // now not all roles of these templates might be executed in this stage so
+      // we must select which roles we want within the template.
+      for (InstanceTemplate stageTemplate : stageTemplates) {
+        if (shouldIgnoreInstanceTemplate(stageTemplate)) {
+          continue; // skip execution if this group of instances is not in
+                    // target
+        }
+
+        StatementBuilder statementBuilder = new StatementBuilder();
+        ComputeServiceContext computeServiceContext = getCompute().apply(
+            clusterSpec);
+        FirewallManager firewallManager = new FirewallManager(
+            computeServiceContext, clusterSpec, newCluster);
+
+        ClusterActionEvent event = new ClusterActionEvent(getAction(),
+            clusterSpec, stageTemplate, newCluster, statementBuilder,
+            getCompute(), firewallManager);
+
+        Set<String> stateAndTemplateRoles = Sets.intersection(stageRoles,
+            stageTemplate.getRoles());
+
+        for (String role : stateAndTemplateRoles) {
+          if (roleIsInTarget(role)) {
+            safeGetActionHandler(role).beforeAction(event);
+          }
+        }
+
+        stageEvents.add(event);
+
+        // cluster may have been updated by handler
+        newCluster = event.getCluster();
+      }
+
+      eventsPerStage.add(stageEvents);
+    }
+
+    doAction(clusterSpec, newCluster, eventsPerStage);
+
+    // cluster may have been updated by action
+    newCluster = Iterables.get(eventMap.values(), 0).getCluster();
+
+    for (InstanceTemplate instanceTemplate : clusterSpec.getInstanceTemplates()) {
+      if (shouldIgnoreInstanceTemplate(instanceTemplate)) {
+        continue;
+      }
+      ClusterActionEvent event = eventMap.get(instanceTemplate);
+      for (String role : instanceTemplate.getRoles()) {
+        if (roleIsInTarget(role)) {
+          event.setCluster(newCluster);
+          safeGetActionHandler(role).afterAction(event);
+
+          // cluster may have been updated by handler
+          newCluster = event.getCluster();
+        }
+      }
+    }
+    return newCluster;
+  }
+
+  /**
+   * Fires all event actions in parallel, respecting stages.
+   * 
+   * @param spec
+   * @param cluster
+   * @param eventsPerStage
+   */
+
+  protected <T> void fireActionEventsInParallel(ClusterSpec spec,
+      Cluster cluster, List<List<ClusterActionEvent>> eventsPerStage)
+      throws InterruptedException {
+    fireActionEventsInParallel(spec, cluster, eventsPerStage, executors);
+  }
+
+  /**
+   * Fires all event actions in parallel, respecting stages.
+   * 
+   * @param spec
+   * @param cluster
+   * @param eventsPerStage
+   */
+  @SuppressWarnings("unchecked")
+  protected <T> void fireActionEventsInParallel(ClusterSpec spec,
+      Cluster cluster, List<List<ClusterActionEvent>> eventsPerStage,
+      ExecutorService executors) throws InterruptedException {
+
+    for (List<ClusterActionEvent> stageEvents : eventsPerStage) {
+      Collection<Callable<T>> callables = Lists.newArrayList();
+      for (ClusterActionEvent event : stageEvents) {
+        callables.add((Callable<T>) event.getEventCallable());
+      }
+      // TODO handle event timeouts here
+      List<Future<T>> futures = executors.invokeAll(callables);
+      for (int i = 0; i < futures.size(); i++) {
+        // TODO propagate certain kinds of errors?
+        stageEvents.get(i).setEventFuture(futures.get(i));
+      }
+      // TODO wait for a certain time to make sure all side effects of the
+      // stage's events have happened
+    }
+
+  }
+
+  protected boolean shouldIgnoreInstanceTemplate(InstanceTemplate template) {
+    return targetRoles.size() != 0
+        && containsNoneOf(template.getRoles(), targetRoles);
+  }
+
+  protected boolean roleIsInTarget(String role) {
+    return targetRoles.size() == 0 || targetRoles.contains(role);
+  }
+
+  /**
+   * Try to get an {@see ClusterActionHandler } instance or throw an
+   * IllegalArgumentException if not found for this role name
+   */
+  protected ClusterActionHandler safeGetActionHandler(String role) {
+    try {
+      ClusterActionHandler handler = handlerMap.get(role);
+      if (handler == null) {
+        throw new IllegalArgumentException("No handler for role " + role);
+      }
+      return handler;
+
+    } catch (ComputationException e) {
+      throw new IllegalArgumentException(e.getCause());
+    }
+  }
+
+  private boolean containsNoneOf(Set<String> querySet, final Set<String> target) {
+    return !Iterables.any(querySet, new Predicate<String>() {
+      @Override
+      public boolean apply(@Nullable String role) {
+        return target.contains(role);
+      }
+    });
+  }
+
+  protected List<InstanceTemplate> findTemplatesWithRoles(
+      Collection<InstanceTemplate> templates, Set<String> roles) {
+    return null;
+  }
+
+  protected String asString(Set<Instance> instances) {
+    return Joiner.on(", ").join(
+        Iterables.transform(instances, new Function<Instance, String>() {
+          @Override
+          public String apply(@Nullable Instance instance) {
+            return instance == null ? "<null>" : instance.getId();
+          }
+        }));
+  }
+
+  protected boolean instanceIsNotInTarget(Instance instance) {
+    if (targetInstanceIds.size() != 0) {
+      return !targetInstanceIds.contains(instance.getId());
+    }
+    if (targetRoles.size() != 0) {
+      return containsNoneOf(instance.getRoles(), targetRoles);
+    }
+    return false;
+  }
+
 }

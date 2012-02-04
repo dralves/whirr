@@ -24,8 +24,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.whirr.ClusterAction;
 import org.apache.whirr.ClusterSpec;
-import org.apache.whirr.InstanceTemplate;
 import org.apache.whirr.service.ClusterActionEvent;
 import org.apache.whirr.service.ClusterActionHandler;
 import org.jclouds.compute.ComputeService;

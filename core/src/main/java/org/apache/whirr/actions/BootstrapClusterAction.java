@@ -176,7 +176,7 @@ public class BootstrapClusterAction extends ClusterAction {
       Set<String> roles = entry.getKey().getRoles();
       instances.addAll(getInstances(roles, nodes));
     }
-    cluster = new Cluster(instances);
+    newCluster = new Cluster(instances);
 
     for (Entry<InstanceTemplate, ClusterActionEvent> entry : eventMap
         .entrySet()) {

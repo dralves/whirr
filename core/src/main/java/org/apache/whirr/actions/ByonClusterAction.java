@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.apache.whirr.Cluster;
 import org.apache.whirr.Cluster.Instance;
@@ -109,7 +110,7 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
         for (final Instance instance : templateInstances) {
           final Statement statement = statementBuilder.build(spec, instance);
 
-          event.setEventCallable(new Callable<Void>() {
+          event.addEventCallable(new Callable<Void>() {
             @Override
             public Void call() throws Exception {
               LOG.info("Running script on: {}", instance.getId());
@@ -133,10 +134,12 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
 
     for (List<ClusterActionEvent> stageEvents : eventsPerStage) {
       for (ClusterActionEvent event : stageEvents) {
-        try {
-          event.getEventFuture().get();
-        } catch (ExecutionException e) {
-          throw new IOException(e.getCause());
+        for (Future<?> future : event.getEventFutures()) {
+          try {
+            future.get();
+          } catch (ExecutionException e) {
+            throw new IOException(e.getCause());
+          }
         }
       }
     }

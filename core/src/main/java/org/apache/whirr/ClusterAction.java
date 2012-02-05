@@ -119,12 +119,12 @@ public abstract class ClusterAction {
 
   protected void doAction(ClusterSpec spec, Cluster cluster,
       List<List<ClusterActionEvent>> eventsPerStage)
-      throws InterruptedException, IOException{}
+      throws InterruptedException, IOException {
+  }
 
   public Cluster execute(ClusterSpec clusterSpec, Cluster cluster)
       throws IOException, InterruptedException {
 
-    Map<InstanceTemplate, ClusterActionEvent> eventMap = Maps.newHashMap();
     Cluster newCluster = cluster;
 
     // In order to segregate dependency execution we need to have a separate
@@ -181,23 +181,25 @@ public abstract class ClusterAction {
     doAction(clusterSpec, newCluster, eventsPerStage);
 
     // cluster may have been updated by action
-    newCluster = Iterables.get(eventMap.values(), 0).getCluster();
+    newCluster = eventsPerStage.get(0).get(0).getCluster();
 
-    for (InstanceTemplate instanceTemplate : clusterSpec.getInstanceTemplates()) {
-      if (shouldIgnoreInstanceTemplate(instanceTemplate)) {
-        continue;
-      }
-      ClusterActionEvent event = eventMap.get(instanceTemplate);
-      for (String role : instanceTemplate.getRoles()) {
-        if (roleIsInTarget(role)) {
-          event.setCluster(newCluster);
-          safeGetActionHandler(role).afterAction(event);
+    for (List<ClusterActionEvent> stageEvents : eventsPerStage) {
+      for (ClusterActionEvent event : stageEvents) {
+        if (shouldIgnoreInstanceTemplate(event.getInstanceTemplate())) {
+          continue;
+        }
+        for (String role : event.getInstanceTemplate().getRoles()) {
+          if (roleIsInTarget(role)) {
+            event.setCluster(newCluster);
+            safeGetActionHandler(role).afterAction(event);
 
-          // cluster may have been updated by handler
-          newCluster = event.getCluster();
+            // cluster may have been updated by handler
+            newCluster = event.getCluster();
+          }
         }
       }
     }
+
     return newCluster;
   }
 
@@ -230,13 +232,16 @@ public abstract class ClusterAction {
     for (List<ClusterActionEvent> stageEvents : eventsPerStage) {
       Collection<Callable<T>> callables = Lists.newArrayList();
       for (ClusterActionEvent event : stageEvents) {
-        callables.add((Callable<T>) event.getEventCallable());
+        callables.addAll((Collection<? extends Callable<T>>) event
+            .getEventCallables());
       }
       // TODO handle event timeouts here
       List<Future<T>> futures = executors.invokeAll(callables);
-      for (int i = 0; i < futures.size(); i++) {
-        // TODO propagate certain kinds of errors?
-        stageEvents.get(i).setEventFuture(futures.get(i));
+      int futureCounter = 0;
+      for (ClusterActionEvent event : stageEvents) {
+        for (int i = 0; i < event.getEventCallables().size(); i++) {
+          event.addEventFuture(futures.get(futureCounter++));
+        }
       }
       // TODO wait for a certain time to make sure all side effects of the
       // stage's events have happened
@@ -281,7 +286,13 @@ public abstract class ClusterAction {
 
   protected List<InstanceTemplate> findTemplatesWithRoles(
       Collection<InstanceTemplate> templates, Set<String> roles) {
-    return null;
+    List<InstanceTemplate> templatesWithRoles = Lists.newArrayList();
+    for (InstanceTemplate template : templates) {
+      if (!Sets.intersection(template.getRoles(), roles).isEmpty()) {
+        templatesWithRoles.add(template);
+      }
+    }
+    return templatesWithRoles;
   }
 
   protected String asString(Set<Instance> instances) {

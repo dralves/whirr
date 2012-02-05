@@ -100,7 +100,7 @@ public abstract class ScriptBasedClusterAction extends ClusterAction {
             continue; // skip the script execution
           }
           final Statement statement = statementBuilder.build(spec, instance);
-          event.setEventCallable(new Callable<ExecResponse>() {
+          event.addEventCallable(new Callable<ExecResponse>() {
             @Override
             public ExecResponse call() {
 
@@ -132,24 +132,25 @@ public abstract class ScriptBasedClusterAction extends ClusterAction {
         }
       }
     }
-    
+
     fireActionEventsInParallel(spec, cluster, eventsPerStage);
 
     for (List<ClusterActionEvent> stageEvents : eventsPerStage) {
       for (ClusterActionEvent event : stageEvents) {
-        try {
-          @SuppressWarnings("unchecked")
-          ExecResponse execResponse = ((Future<ExecResponse>) event
-              .getEventFuture()).get();
-          if (execResponse.getExitCode() != 0) {
-            LOG.error("Error running " + phaseName + " script: {}",
-                execResponse);
-          } else {
-            LOG.info("Successfully executed {} script: {}", phaseName,
-                execResponse);
+        for (Future<?> future : event.getEventFutures()) {
+          try {
+            @SuppressWarnings("unchecked")
+            ExecResponse execResponse = ((Future<ExecResponse>) future).get();
+            if (execResponse.getExitCode() != 0) {
+              LOG.error("Error running " + phaseName + " script: {}",
+                  execResponse);
+            } else {
+              LOG.info("Successfully executed {} script: {}", phaseName,
+                  execResponse);
+            }
+          } catch (ExecutionException e) {
+            throw new IOException(e.getCause());
           }
-        } catch (ExecutionException e) {
-          throw new IOException(e.getCause());
         }
       }
     }

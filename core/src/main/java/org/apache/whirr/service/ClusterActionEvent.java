@@ -18,6 +18,7 @@
 
 package org.apache.whirr.service;
 
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -28,6 +29,7 @@ import org.apache.whirr.service.jclouds.StatementBuilder;
 import org.jclouds.compute.ComputeServiceContext;
 
 import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 
 /**
  * An event object which is fired when a {@link org.apache.whirr.ClusterAction}
@@ -42,8 +44,8 @@ public class ClusterActionEvent {
   private StatementBuilder statementBuilder;
   private FirewallManager firewallManager;
   private Function<ClusterSpec, ComputeServiceContext> getCompute;
-  private Callable<?> eventCallable;
-  private Future<?> eventFuture;
+  private List<Callable<?>> eventCallables;
+  private List<Future<?>> eventFutures;
 
   public ClusterActionEvent(String action, ClusterSpec clusterSpec,
       InstanceTemplate instanceTemplate, Cluster cluster,
@@ -65,6 +67,8 @@ public class ClusterActionEvent {
     this.statementBuilder = statementBuilder;
     this.getCompute = getCompute;
     this.firewallManager = firewallManager;
+    this.eventCallables = Lists.newArrayList();
+    this.eventFutures = Lists.newArrayList();
   }
 
   public Cluster getCluster() {
@@ -99,20 +103,20 @@ public class ClusterActionEvent {
     return firewallManager;
   }
 
-  public void setEventCallable(Callable<?> eventCallable) {
-    this.eventCallable = eventCallable;
+  public void addEventCallable(Callable<?> eventCallable) {
+    this.eventCallables.add(eventCallable);
   }
 
-  public void setEventFuture(Future<?> eventFuture) {
-    this.eventFuture = eventFuture;
+  public void addEventFuture(Future<?> eventFuture) {
+    this.eventFutures.add(eventFuture);
   }
 
-  public Callable<?> getEventCallable() {
-    return eventCallable;
+  public List<Callable<?>> getEventCallables() {
+    return eventCallables;
   }
 
-  public Future<?> getEventFuture() {
-    return eventFuture;
+  public List<Future<?>> getEventFutures() {
+    return eventFutures;
   }
 
 }

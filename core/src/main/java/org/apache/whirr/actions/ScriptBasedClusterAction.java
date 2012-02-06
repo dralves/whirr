@@ -19,7 +19,7 @@
 package org.apache.whirr.actions;
 
 import static org.apache.whirr.RolePredicates.onlyRolesIn;
-import static org.jclouds.compute.options.RunScriptOptions.Builder.*;
+import static org.jclouds.compute.options.RunScriptOptions.Builder.overrideLoginCredentials;
 
 import java.io.IOException;
 import java.util.List;

@@ -19,10 +19,13 @@
 package org.apache.whirr.service;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.configuration.Configuration;
+import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.InstanceTemplate;
 
 import com.google.common.collect.Lists;
@@ -39,18 +42,22 @@ import edu.uci.ics.jung.graph.Graph;
  */
 public class DependencyAnalyzer {
 
+  public static final String DEPENDENCY_PROPERTY = "whirr.role-dependency.";
+
   private static int edgeCounter;
 
-  public static List<Set<String>> buildStages(
-      Collection<InstanceTemplate> instanceTemplates,
+  public static List<Set<String>> buildStages(ClusterSpec spec,
       Map<String, ClusterActionHandler> handlerMap) {
     edgeCounter = 0;
+    // process dependency overrides from configuration and set them in the
+    // handlers before proceeding to building the graph
+    processDependencyOverrides(spec, handlerMap);
     Graph<String, Integer> rolesGraph = buildGraph(
-        collectRolesFromTemplates(instanceTemplates), handlerMap);
+        collectRolesFromTemplates(spec.getInstanceTemplates()), handlerMap);
     Map<String, Integer> levelMappings = Maps.newLinkedHashMap();
     List<Set<String>> stages = Lists.newArrayList();
     Set<String> roots = Sets.newLinkedHashSet();
-    // find the roots, ie the roles that depend on no one
+    // find the roots, i.e. the roles that depend on no one
     for (String role : rolesGraph.getVertices()) {
       if (rolesGraph.inDegree(role) == 0) {
         levelMappings.put(role, 0);
@@ -70,6 +77,30 @@ public class DependencyAnalyzer {
       stages.add(nextStage);
     }
     return stages;
+  }
+
+  private static void processDependencyOverrides(ClusterSpec spec,
+      Map<String, ClusterActionHandler> handlerMap) {
+    Configuration config = spec
+        .getConfigurationForKeysWithPrefix(DEPENDENCY_PROPERTY);
+    for (Iterator<?> iter = config.getKeys(); iter.hasNext();) {
+      String key = (String) iter.next();
+      String role = key.split(".")[2];
+      if (handlerMap.containsKey(role)) {
+        handlerMap.get(key).getRequiredRoles().clear();
+        handlerMap.get(key).getRequiredRoles()
+            .addAll(processOverridenRoles(config.getString(key)));
+      }
+    }
+  }
+
+  private static Set<String> processOverridenRoles(String roles) {
+    String[] splitRoles = roles.split(",");
+    Set<String> finalRoles = Sets.newHashSet();
+    for (String splitRole : splitRoles) {
+      finalRoles.add(splitRole.trim());
+    }
+    return finalRoles;
   }
 
   private static Set<String> processNextStage(Set<String> parents,

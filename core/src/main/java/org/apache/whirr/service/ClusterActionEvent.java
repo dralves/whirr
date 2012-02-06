@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
+import javax.ws.rs.GET;
+
 import org.apache.whirr.Cluster;
 import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.InstanceTemplate;
@@ -46,6 +48,7 @@ public class ClusterActionEvent {
   private Function<ClusterSpec, ComputeServiceContext> getCompute;
   private List<Callable<?>> eventCallables;
   private List<Future<?>> eventFutures;
+  private long executionWaitTime;
 
   public ClusterActionEvent(String action, ClusterSpec clusterSpec,
       InstanceTemplate instanceTemplate, Cluster cluster,
@@ -117,6 +120,14 @@ public class ClusterActionEvent {
 
   public List<Future<?>> getEventFutures() {
     return eventFutures;
+  }
+
+  public void setExecutionWaitTime(long executionWaitTime) {
+    this.executionWaitTime = executionWaitTime;
+  }
+
+  public long getExecutionWaitTime() {
+    return executionWaitTime;
   }
 
 }

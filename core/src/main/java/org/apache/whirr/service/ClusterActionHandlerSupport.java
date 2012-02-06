@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collections;
 import java.util.Set;
 
 import org.apache.commons.configuration.CompositeConfiguration;
@@ -36,6 +35,8 @@ import org.jclouds.scriptbuilder.domain.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Sets;
+
 /**
  * This is a utility class to make it easier to implement
  * {@link ClusterActionHandler}. For each 'before' and 'after' action type there
@@ -48,7 +49,7 @@ public abstract class ClusterActionHandlerSupport extends ClusterActionHandler {
   
   @Override
   public Set<String> getRequiredRoles() {
-    return Collections.emptySet();
+    return Sets.newHashSet();
   }
 
   @Override

@@ -62,6 +62,17 @@ public abstract class ClusterActionHandler {
   public abstract Set<String> getRequiredRoles();
   
   /**
+   * Can be overridden to allow handlers to specify a wait time between stages.
+   * For instance if there is a service whose start script returns immediately
+   * but that actually takes a few seconds to start.
+   * 
+   * @return
+   */
+  public long getOnlineDelayMillis() {
+    return 0L;
+  }
+  
+  /**
    * Called before the action is performed, giving the implementation an
    * opportunity to specify scripts that should be run as a part of this
    * action.

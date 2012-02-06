@@ -49,7 +49,6 @@ import com.google.common.collect.ComputationException;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 /**
@@ -63,13 +62,13 @@ public abstract class ClusterAction {
   protected final Map<String, ClusterActionHandler> handlerMap;
   protected final ImmutableSet<String> targetInstanceIds;
   protected final ImmutableSet<String> targetRoles;
-  private static final AtomicInteger eventThreadCounter = new AtomicInteger();
-  protected static final ExecutorService executors = Executors
+  private static final AtomicInteger EVENT_THREAD_COUNTER = new AtomicInteger();
+  protected static final ExecutorService EXECUTORS = Executors
       .newCachedThreadPool(new ThreadFactory() {
         @Override
         public Thread newThread(Runnable r) {
           Thread thread = new Thread(r, "ClusterEventThread["
-              + eventThreadCounter.getAndIncrement() + "]");
+              + EVENT_THREAD_COUNTER.getAndIncrement() + "]");
           thread.setDaemon(true);
           return thread;
         }
@@ -79,7 +78,7 @@ public abstract class ClusterAction {
     Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
       public void run() {
-        executors.shutdown();
+        EXECUTORS.shutdown();
       }
     });
   }
@@ -129,8 +128,8 @@ public abstract class ClusterAction {
 
     // In order to segregate dependency execution we need to have a separate
     // ClusterActionEvent not only per instance template but also per role.
-    List<Set<String>> stages = DependencyAnalyzer.buildStages(
-        clusterSpec.getInstanceTemplates(), handlerMap);
+    List<Set<String>> stages = DependencyAnalyzer.buildStages(clusterSpec,
+        handlerMap);
 
     List<List<ClusterActionEvent>> eventsPerStage = Lists.newArrayList();
 
@@ -163,12 +162,19 @@ public abstract class ClusterAction {
         Set<String> stateAndTemplateRoles = Sets.intersection(stageRoles,
             stageTemplate.getRoles());
 
+        long eventExecutionWaitTime = 0L;
         for (String role : stateAndTemplateRoles) {
           if (roleIsInTarget(role)) {
             safeGetActionHandler(role).beforeAction(event);
+            long handlerExecutionWaitTime = safeGetActionHandler(role)
+                .getOnlineDelayMillis();
+            if (handlerExecutionWaitTime > eventExecutionWaitTime) {
+              eventExecutionWaitTime = handlerExecutionWaitTime;
+            }
           }
         }
 
+        event.setExecutionWaitTime(eventExecutionWaitTime);
         stageEvents.add(event);
 
         // cluster may have been updated by handler
@@ -214,7 +220,7 @@ public abstract class ClusterAction {
   protected <T> void fireActionEventsInParallel(ClusterSpec spec,
       Cluster cluster, List<List<ClusterActionEvent>> eventsPerStage)
       throws InterruptedException {
-    fireActionEventsInParallel(spec, cluster, eventsPerStage, executors);
+    fireActionEventsInParallel(spec, cluster, eventsPerStage, EXECUTORS);
   }
 
   /**
@@ -229,13 +235,19 @@ public abstract class ClusterAction {
       Cluster cluster, List<List<ClusterActionEvent>> eventsPerStage,
       ExecutorService executors) throws InterruptedException {
 
+    long executionWaitTime = 0L;
     for (List<ClusterActionEvent> stageEvents : eventsPerStage) {
       Collection<Callable<T>> callables = Lists.newArrayList();
       for (ClusterActionEvent event : stageEvents) {
-        callables.addAll((Collection<? extends Callable<T>>) event
-            .getEventCallables());
+        if (event.getExecutionWaitTime() > executionWaitTime) {
+          executionWaitTime = event.getExecutionWaitTime();
+        }
+        for (@SuppressWarnings("rawtypes")
+        Callable callable : event.getEventCallables()) {
+          callables.add(callable);
+        }
       }
-      // TODO handle event timeouts here
+
       List<Future<T>> futures = executors.invokeAll(callables);
       int futureCounter = 0;
       for (ClusterActionEvent event : stageEvents) {
@@ -243,8 +255,7 @@ public abstract class ClusterAction {
           event.addEventFuture(futures.get(futureCounter++));
         }
       }
-      // TODO wait for a certain time to make sure all side effects of the
-      // stage's events have happened
+      Thread.sleep(executionWaitTime);
     }
 
   }

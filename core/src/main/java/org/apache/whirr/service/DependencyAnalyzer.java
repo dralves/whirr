@@ -42,11 +42,12 @@ import edu.uci.ics.jung.graph.Graph;
  */
 public class DependencyAnalyzer {
 
-  public static final String DEPENDENCY_PROPERTY = "whirr.role-dependency.";
+  public static final String DEPENDENCY_PROPERTY = "whirr.role-dependency";
 
-  private static int edgeCounter;
+  private int edgeCounter;
+  private Map<String, Set<String>> dependecyOverrides = Maps.newHashMap();
 
-  public static List<Set<String>> buildStages(ClusterSpec spec,
+  public List<Set<String>> buildStages(ClusterSpec spec,
       Map<String, ClusterActionHandler> handlerMap) {
     edgeCounter = 0;
     // process dependency overrides from configuration and set them in the
@@ -54,6 +55,7 @@ public class DependencyAnalyzer {
     processDependencyOverrides(spec, handlerMap);
     Graph<String, Integer> rolesGraph = buildGraph(
         collectRolesFromTemplates(spec.getInstanceTemplates()), handlerMap);
+    System.out.println(rolesGraph);
     Map<String, Integer> levelMappings = Maps.newLinkedHashMap();
     List<Set<String>> stages = Lists.newArrayList();
     Set<String> roots = Sets.newLinkedHashSet();
@@ -79,22 +81,19 @@ public class DependencyAnalyzer {
     return stages;
   }
 
-  private static void processDependencyOverrides(ClusterSpec spec,
+  private void processDependencyOverrides(ClusterSpec spec,
       Map<String, ClusterActionHandler> handlerMap) {
     Configuration config = spec
         .getConfigurationForKeysWithPrefix(DEPENDENCY_PROPERTY);
     for (Iterator<?> iter = config.getKeys(); iter.hasNext();) {
       String key = (String) iter.next();
-      String role = key.split(".")[2];
-      if (handlerMap.containsKey(role)) {
-        handlerMap.get(key).getRequiredRoles().clear();
-        handlerMap.get(key).getRequiredRoles()
-            .addAll(processOverridenRoles(config.getString(key)));
-      }
+      String role = key.split("\\.")[2];
+      dependecyOverrides
+          .put(role, processOverridenRoles(config.getString(key)));
     }
   }
 
-  private static Set<String> processOverridenRoles(String roles) {
+  private Set<String> processOverridenRoles(String roles) {
     String[] splitRoles = roles.split(",");
     Set<String> finalRoles = Sets.newHashSet();
     for (String splitRole : splitRoles) {
@@ -103,9 +102,8 @@ public class DependencyAnalyzer {
     return finalRoles;
   }
 
-  private static Set<String> processNextStage(Set<String> parents,
-      int currentLevel, Map<String, Integer> levelMappings,
-      Graph<String, Integer> rolesGraph) {
+  private Set<String> processNextStage(Set<String> parents, int currentLevel,
+      Map<String, Integer> levelMappings, Graph<String, Integer> rolesGraph) {
     Set<String> children = Sets.newLinkedHashSet();
     for (String parent : parents) {
       children.addAll(rolesGraph.getSuccessors(parent));
@@ -119,7 +117,7 @@ public class DependencyAnalyzer {
     return children;
   }
 
-  private static Set<String> collectRolesFromTemplates(
+  private Set<String> collectRolesFromTemplates(
       Collection<InstanceTemplate> instanceTemplates) {
     // so that start orders are as deterministic as possible
     Set<String> roles = Sets.newLinkedHashSet();
@@ -129,17 +127,24 @@ public class DependencyAnalyzer {
     return roles;
   }
 
-  private static void addRoleAndParents(String role,
+  private void addRoleAndParents(String role,
       Graph<String, Integer> rolesGraph,
       Map<String, ClusterActionHandler> handlerMap) {
     if (handlerMap.get(role) == null) {
-      throw new ServiceNotFoundException(role);
+      throw new ServiceNotFoundException("A required service cannot be found: "
+          + role);
     }
     rolesGraph.addVertex(role);
     // get this role's parents
-    Set<String> parents = handlerMap.get(role).getRequiredRoles();
+    Set<String> parents = null;
+    if (!dependecyOverrides.containsKey(role)) {
+      parents = handlerMap.get(role).getRequiredRoles();
+    } else {
+      parents = dependecyOverrides.get(role);
+    }
     // make sure the parents are in the graph if any.
     for (String parent : parents) {
+      System.out.println("Role: " + role + " Parent: " + parent);
       if (!rolesGraph.containsVertex(parent)) {
         addRoleAndParents(parent, rolesGraph, handlerMap);
       }
@@ -147,7 +152,7 @@ public class DependencyAnalyzer {
     }
   }
 
-  private static Graph<String, Integer> buildGraph(Set<String> templateRoles,
+  private Graph<String, Integer> buildGraph(Set<String> templateRoles,
       Map<String, ClusterActionHandler> handlerMap) {
     Graph<String, Integer> rolesGraph = new DirectedSparseGraph<String, Integer>();
     for (String role : templateRoles) {

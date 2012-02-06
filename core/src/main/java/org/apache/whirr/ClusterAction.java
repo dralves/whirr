@@ -128,8 +128,8 @@ public abstract class ClusterAction {
 
     // In order to segregate dependency execution we need to have a separate
     // ClusterActionEvent not only per instance template but also per role.
-    List<Set<String>> stages = DependencyAnalyzer.buildStages(clusterSpec,
-        handlerMap);
+    List<Set<String>> stages = new DependencyAnalyzer().buildStages(
+        clusterSpec, handlerMap);
 
     List<List<ClusterActionEvent>> eventsPerStage = Lists.newArrayList();
 

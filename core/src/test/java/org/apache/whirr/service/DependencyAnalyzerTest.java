@@ -84,8 +84,8 @@ public class DependencyAnalyzerTest {
 
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
-    List<Set<String>> stages = DependencyAnalyzer.buildStages(clusterSpec,
-        HandlerMapFactory.create());
+    List<Set<String>> stages = new DependencyAnalyzer().buildStages(
+        clusterSpec, HandlerMapFactory.create());
 
     assertEquals("Was expecting a single stage", 1, stages.size());
     assertTrue("Was expecting service-a to be in the first stage", stages
@@ -104,8 +104,8 @@ public class DependencyAnalyzerTest {
 
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
-    List<Set<String>> stages = DependencyAnalyzer.buildStages(clusterSpec,
-        HandlerMapFactory.create());
+    List<Set<String>> stages = new DependencyAnalyzer().buildStages(
+        clusterSpec, HandlerMapFactory.create());
 
     assertEquals("Was expecting three stages", 3, stages.size());
     assertTrue("Was expecting service-a to be in the first stage", stages
@@ -114,5 +114,30 @@ public class DependencyAnalyzerTest {
         stages.get(1).contains("service-b"));
     assertTrue("Was expecting service-c to be in the third stage", stages
         .get(2).contains("service-c"));
+  }
+
+  @Test
+  public void testOverridenDependencies() throws ConfigurationException,
+      JSchException, IOException {
+    CompositeConfiguration config = new CompositeConfiguration();
+    config.setProperty("whirr.provider", "stub");
+    config.setProperty("whirr.cluster-name", "stub-test");
+    config.setProperty("whirr.instance-templates",
+        "1 service-b, 1 service-a, 1 service-c");
+    config.setProperty("whirr.state-store", "memory");
+    config.setProperty("whirr.role-dependency.service-c", "service-a");
+
+    ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
+
+    List<Set<String>> stages = new DependencyAnalyzer().buildStages(
+        clusterSpec, HandlerMapFactory.create());
+
+    assertEquals("Was expecting two stages", 2, stages.size());
+    assertTrue("Was expecting service-a to be in the first stage", stages
+        .get(0).contains("service-a"));
+    assertTrue("Was expecting service-b to be in the second stage",
+        stages.get(1).contains("service-b"));
+    assertTrue("Was expecting service-c to be in the second stage",
+        stages.get(1).contains("service-c"));
   }
 }

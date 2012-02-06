@@ -31,7 +31,7 @@ import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.HandlerMapFactory;
 import org.junit.Test;
 
-import com.google.common.collect.Sets;
+import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 
 public class DependencyAnalyzerTest {
@@ -54,7 +54,7 @@ public class DependencyAnalyzerTest {
 
     @Override
     public Set<String> getRequiredRoles() {
-      return Sets.newHashSet("service-a");
+      return ImmutableSet.of("service-a");
     }
 
   }
@@ -68,7 +68,7 @@ public class DependencyAnalyzerTest {
 
     @Override
     public Set<String> getRequiredRoles() {
-      return Sets.newHashSet("service-b");
+      return ImmutableSet.of("service-b");
     }
 
   }

@@ -24,6 +24,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Set;
 
+import com.google.common.base.Objects;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
@@ -42,7 +43,7 @@ import com.google.common.collect.ImmutableSet;
  * {@link ClusterActionHandler}. For each 'before' and 'after' action type there
  * is a corresponding method that implementations may override.
  */
-public abstract class ClusterActionHandlerSupport extends ClusterActionHandler {
+public abstract class ClusterActionHandlerSupport implements ClusterActionHandler {
 
   private static final Logger LOG = LoggerFactory
       .getLogger(ClusterActionHandler.class);
@@ -51,10 +52,15 @@ public abstract class ClusterActionHandlerSupport extends ClusterActionHandler {
   public Set<String> getRequiredRoles() {
     return ImmutableSet.of();
   }
-
+  
   @Override
-  public void beforeAction(ClusterActionEvent event) throws IOException,
-      InterruptedException {
+  public long getOnlineDelayMillis()  {
+    return 0L;
+  }
+
+  
+  public void beforeAction(ClusterActionEvent event)
+      throws IOException, InterruptedException{
     if (event.getAction().equals(BOOTSTRAP_ACTION)) {
       beforeBootstrap(event);
     } else if (event.getAction().equals(CONFIGURE_ACTION)) {
@@ -168,9 +174,9 @@ public abstract class ClusterActionHandlerSupport extends ClusterActionHandler {
   protected Configuration getConfiguration(ClusterSpec clusterSpec,
       String defaultsPropertiesFile) throws IOException {
     try {
-      return getConfiguration(clusterSpec, new PropertiesConfiguration(
-          defaultsPropertiesFile));
-    } catch (ConfigurationException e) {
+      return getConfiguration(clusterSpec,
+          new PropertiesConfiguration(getClass().getClassLoader().getResource(defaultsPropertiesFile)));
+    } catch(ConfigurationException e) {
       throw new IOException("Error loading " + defaultsPropertiesFile, e);
     }
   }
@@ -278,5 +284,26 @@ public abstract class ClusterActionHandlerSupport extends ClusterActionHandler {
 
     return config.getString(key, defaultFunction);
   }
+  /**
+    * this uses the inefficient {@link com.google.common.base.Objects} implementation as the object count will be
+    * relatively small and therefore efficiency is not a concern.
+    */
+   @Override
+   public int hashCode() {
+      return Objects.hashCode(getRole());
+   }
+
+   @Override
+   public boolean equals(Object that) {
+      if (that == null)
+         return false;
+      return Objects.equal(this.toString(), that.toString());
+   }
+
+   @Override
+   public String toString() {
+      return Objects.toStringHelper(this).add("role", getRole()).toString();
+   }
+
 
 }

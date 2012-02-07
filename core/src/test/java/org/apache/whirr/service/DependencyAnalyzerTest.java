@@ -85,7 +85,7 @@ public class DependencyAnalyzerTest {
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
     List<Set<String>> stages = new DependencyAnalyzer().buildStages(
-        clusterSpec, HandlerMapFactory.create());
+        clusterSpec, new HandlerMapFactory().create());
 
     assertEquals("Was expecting a single stage", 1, stages.size());
     assertTrue("Was expecting service-a to be in the first stage", stages
@@ -105,7 +105,7 @@ public class DependencyAnalyzerTest {
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
     List<Set<String>> stages = new DependencyAnalyzer().buildStages(
-        clusterSpec, HandlerMapFactory.create());
+        clusterSpec, new HandlerMapFactory().create());
 
     assertEquals("Was expecting three stages", 3, stages.size());
     assertTrue("Was expecting service-a to be in the first stage", stages
@@ -130,7 +130,7 @@ public class DependencyAnalyzerTest {
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
 
     List<Set<String>> stages = new DependencyAnalyzer().buildStages(
-        clusterSpec, HandlerMapFactory.create());
+        clusterSpec, new HandlerMapFactory().create());
 
     assertEquals("Was expecting two stages", 2, stages.size());
     assertTrue("Was expecting service-a to be in the first stage", stages

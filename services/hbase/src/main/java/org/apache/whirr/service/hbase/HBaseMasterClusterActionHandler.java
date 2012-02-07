@@ -62,10 +62,11 @@ public class HBaseMasterClusterActionHandler extends HBaseClusterActionHandler {
   @Override
   protected void beforeBootstrap(ClusterActionEvent event) throws IOException {
     ClusterSpec clusterSpec = event.getClusterSpec();    
+    Configuration conf = getConfiguration(clusterSpec);
 
     addStatement(event, call("configure_hostnames"));
 
-    addStatement(event, call("install_java"));
+    addStatement(event, call(getInstallFunction(conf, "java", "install_java")));
     addStatement(event, call("install_tarball"));
 
     String tarurl = prepareRemoteFileUrl(event,
@@ -188,6 +189,7 @@ public class HBaseMasterClusterActionHandler extends HBaseClusterActionHandler {
         "Use Ctrl-c to quit.'\n", master.getHostName())
         + Joiner.on(" ").join(proxy.getProxyCommand());
       Files.write(script, hbaseProxyFile, Charsets.UTF_8);
+      hbaseProxyFile.setExecutable(true);
       LOG.info("Wrote HBase proxy script {}", hbaseProxyFile);
     } catch (IOException e) {
       LOG.error("Problem writing HBase proxy script {}", hbaseProxyFile, e);

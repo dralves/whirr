@@ -2,6 +2,11 @@ Apache Whirr Change Log
 
 Trunk (unreleased changes)
 
+  NEW FEATURES
+
+    WHIRR-500. Let users control which hardware is used for each 
+    instance template (Karel Vervaeke via asavu)
+
   IMPROVEMENTS
 
     WHIRR-421. Handle more role / service lifecycle events as part 
@@ -32,6 +37,19 @@ Trunk (unreleased changes)
 
     WHIRR-484. Add restart-services command (asavu)
 
+    WHIRR-497. Update maven plugins & project deps (asavu)
+
+    WHIRR-493. Test override number of mappers for Hadoop (asavu)
+
+    WHIRR-454. Allow openjdk to be installed as an alternative 
+    to sun-java-6 (Karel Vervaeke via asavu)
+
+    WHIRR-439. Make proxy files executable (Marco Didonna via asavu)
+
+    WHIRR-498. Update the list of known limitations (asavu)
+
+    WHIRR-436. Allow Whirr to run from inside OSGi (Ioannis Canellos via asavu)
+
   BUG FIXES
 
     WHIRR-367. Wrong groupId for zookeeper (Joe Crobak via asavu)
@@ -40,6 +58,15 @@ Trunk (unreleased changes)
 
     WHIRR-473. HadoopServiceController.getInstance(String config) does 
     not update instances correctly (Frank Scholten via asavu)
+
+    WHIRR-490. hadoop-mapreduce.mapred.child.ulimit should be 
+    unlimited by default (asavu)
+
+    WHIRR-495. bin/whirr is does not have executable permissions 
+    in the 0.7.0 pre-built download (asavu)
+
+    WHIRR-496. Documentation in 5-Minute guide is missing key 
+    option for destroy step (asavu)  
 
 Release 0.7.0 - 2011-12-11
 

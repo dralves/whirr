@@ -55,7 +55,6 @@ public class DependencyAnalyzer {
     processDependencyOverrides(spec, handlerMap);
     Graph<String, Integer> rolesGraph = buildGraph(
         collectRolesFromTemplates(spec.getInstanceTemplates()), handlerMap);
-    System.out.println(rolesGraph);
     Map<String, Integer> levelMappings = Maps.newLinkedHashMap();
     List<Set<String>> stages = Lists.newArrayList();
     Set<String> roots = Sets.newLinkedHashSet();
@@ -144,7 +143,6 @@ public class DependencyAnalyzer {
     }
     // make sure the parents are in the graph if any.
     for (String parent : parents) {
-      System.out.println("Role: " + role + " Parent: " + parent);
       if (!rolesGraph.containsVertex(parent)) {
         addRoleAndParents(parent, rolesGraph, handlerMap);
       }

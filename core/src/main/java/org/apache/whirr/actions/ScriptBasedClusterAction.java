@@ -114,7 +114,6 @@ public abstract class ScriptBasedClusterAction extends ClusterAction {
               }
 
               try {
-                System.out.println(statement.render(OsFamily.UNIX));
                 return computeService.runScriptOnNode(
                     instance.getId(),
                     statement,

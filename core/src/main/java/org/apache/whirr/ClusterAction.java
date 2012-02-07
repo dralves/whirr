@@ -86,7 +86,7 @@ public abstract class ClusterAction {
   protected ClusterAction(
       final Function<ClusterSpec, ComputeServiceContext> getCompute) {
     this.getCompute = getCompute;
-    this.handlerMap = HandlerMapFactory.create();
+    this.handlerMap = new HandlerMapFactory().create();
     this.targetInstanceIds = null;
     this.targetRoles = null;
   }

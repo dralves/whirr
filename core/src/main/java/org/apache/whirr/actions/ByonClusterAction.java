@@ -19,6 +19,8 @@
 package org.apache.whirr.actions;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.whirr.Cluster;
 import org.apache.whirr.Cluster.Instance;
 import org.apache.whirr.ClusterSpec;
@@ -44,6 +47,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Function;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
@@ -74,6 +79,7 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
       throws InterruptedException, IOException {
 
     List<NodeMetadata> nodes = Lists.newArrayList();
+    List<NodeMetadata> usedNodes = Lists.newArrayList();
     int numberAllocated = 0;
     Set<Instance> allInstances = Sets.newLinkedHashSet();
     final Credentials credentials = new Credentials(spec.getClusterUser(),
@@ -99,9 +105,20 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
         }
 
         int num = event.getInstanceTemplate().getNumberOfInstances();
-        final List<NodeMetadata> templateNodes = nodes.subList(numberAllocated,
-            numberAllocated + num);
-        numberAllocated += num;
+        Predicate<NodeMetadata> unused = Predicates.not(Predicates
+            .in(usedNodes));
+        Predicate<NodeMetadata> instancePredicate = new TagsPredicate(
+            StringUtils.split(event.getInstanceTemplate().getHardwareId()));
+
+        List<NodeMetadata> templateNodes = new ArrayList(Collections2.filter(
+            nodes, Predicates.and(unused, instancePredicate)));
+        if (templateNodes.size() < num) {
+          LOG.warn("Not enough nodes available for template "
+              + StringUtils.join(event.getInstanceTemplate().getRoles(), "+"));
+        }
+        templateNodes = templateNodes.subList(0, num);
+        usedNodes.addAll(templateNodes);
+        numberAllocated = usedNodes.size();
 
         final Set<Instance> templateInstances = getInstances(credentials, event
             .getInstanceTemplate().getRoles(), templateNodes);
@@ -114,7 +131,6 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
             @Override
             public Void call() throws Exception {
               LOG.info("Running script on: {}", instance.getId());
-
               if (LOG.isDebugEnabled()) {
                 LOG.debug("Running script:\n{}",
                     statement.render(OsFamily.UNIX));
@@ -165,6 +181,24 @@ public class ByonClusterAction extends ScriptBasedClusterAction {
                 .getId(), node);
           }
         }));
+  }
+
+  private static class TagsPredicate implements Predicate<NodeMetadata> {
+    private String[] tags;
+
+    public TagsPredicate(String[] tags) {
+      this.tags = tags;
+    }
+
+    @Override
+    public boolean apply(NodeMetadata node) {
+      if (tags == null) {
+        return true;
+      } else {
+        return node.getTags().containsAll(Arrays.asList(tags));
+      }
+    }
+
   }
 
 }

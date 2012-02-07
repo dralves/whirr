@@ -21,24 +21,22 @@ package org.apache.whirr.service;
 import java.io.IOException;
 import java.util.Set;
 
-import com.google.common.base.Objects;
-
 /**
- * A callback interface for cluster actions that apply to instances in a
- * given role.
+ * A callback interface for cluster actions that apply to instances in a given
+ * role.
  * <p>
  * <i>Implementation note.</i> {@link ClusterActionHandler} implementations are
  * discovered using a Service Provider Interface (SPI), described in
  * {@link java.util.ServiceLoader}.
  */
-public abstract class ClusterActionHandler {
-  
-  public static final String BOOTSTRAP_ACTION = "bootstrap";
-  public static final String CONFIGURE_ACTION = "configure";
-  public static final String START_ACTION  = "start";
-  public static final String STOP_ACTION = "stop";
-  public static final String CLEANUP_ACTION = "cleanup";
-  public static final String DESTROY_ACTION = "destroy";
+public interface ClusterActionHandler {
+
+  String BOOTSTRAP_ACTION = "bootstrap";
+  String CONFIGURE_ACTION = "configure";
+  String START_ACTION = "start";
+  String STOP_ACTION = "stop";
+  String CLEANUP_ACTION = "cleanup";
+  String DESTROY_ACTION = "destroy";
 
   /**
    * Returns the name of the role/service implemented by this
@@ -46,7 +44,7 @@ public abstract class ClusterActionHandler {
    * 
    * @return
    */
-  public abstract String getRole();
+  String getRole();
 
   /**
    * Returns the set of roles this role depends on. This role will not
@@ -59,8 +57,8 @@ public abstract class ClusterActionHandler {
    * 
    * @return
    */
-  public abstract Set<String> getRequiredRoles();
-  
+  Set<String> getRequiredRoles();
+
   /**
    * Can be overridden to allow handlers to specify a wait time between stages.
    * For instance if there is a service whose start script returns immediately
@@ -68,47 +66,23 @@ public abstract class ClusterActionHandler {
    * 
    * @return
    */
-  public long getOnlineDelayMillis() {
-    return 0L;
-  }
-  
+  long getOnlineDelayMillis();
+
   /**
    * Called before the action is performed, giving the implementation an
-   * opportunity to specify scripts that should be run as a part of this
-   * action.
+   * opportunity to specify scripts that should be run as a part of this action.
+   * 
    * @param event
    */
-  public void beforeAction(ClusterActionEvent event)
-      throws IOException, InterruptedException {
-  }
-  
+  void beforeAction(ClusterActionEvent event) throws IOException,
+      InterruptedException;
+
   /**
    * Called after the action has been performed.
+   * 
    * @param event
    */
-  public void afterAction(ClusterActionEvent event)
-      throws IOException, InterruptedException {
-  }
-
-  /**
-   * this uses the inefficient {@link Objects} implementation as the object count will be
-   * relatively small and therefore efficiency is not a concern.
-   */
-  @Override
-  public int hashCode() {
-     return Objects.hashCode(getRole());
-  }
-
-  @Override
-  public boolean equals(Object that) {
-     if (that == null)
-        return false;
-     return Objects.equal(this.toString(), that.toString());
-  }
-
-  @Override
-  public String toString() {
-     return Objects.toStringHelper(this).add("role", getRole()).toString();
-  }
+  void afterAction(ClusterActionEvent event) throws IOException,
+      InterruptedException;
 
 }

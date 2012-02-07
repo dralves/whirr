@@ -58,10 +58,6 @@ import com.google.common.collect.Sets;
  */
 public abstract class ClusterAction {
 
-  private final Function<ClusterSpec, ComputeServiceContext> getCompute;
-  protected final Map<String, ClusterActionHandler> handlerMap;
-  protected final ImmutableSet<String> targetInstanceIds;
-  protected final ImmutableSet<String> targetRoles;
   private static final AtomicInteger EVENT_THREAD_COUNTER = new AtomicInteger();
   protected static final ExecutorService EXECUTORS = Executors
       .newCachedThreadPool(new ThreadFactory() {
@@ -82,6 +78,11 @@ public abstract class ClusterAction {
       }
     });
   }
+
+  private final Function<ClusterSpec, ComputeServiceContext> getCompute;
+  protected final Map<String, ClusterActionHandler> handlerMap;
+  protected final ImmutableSet<String> targetInstanceIds;
+  protected final ImmutableSet<String> targetRoles;
 
   protected ClusterAction(
       final Function<ClusterSpec, ComputeServiceContext> getCompute) {

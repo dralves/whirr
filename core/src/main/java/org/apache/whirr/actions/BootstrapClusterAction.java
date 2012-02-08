@@ -23,8 +23,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.apache.whirr.Cluster;
@@ -125,7 +123,6 @@ public class BootstrapClusterAction extends ClusterAction {
 
     LOG.info("Bootstrapping cluster");
 
-    ExecutorService executorService = Executors.newCachedThreadPool();
     Map<InstanceTemplate, Future<Set<? extends NodeMetadata>>> futures = Maps
         .newHashMap();
 
@@ -151,11 +148,11 @@ public class BootstrapClusterAction extends ClusterAction {
             "bootstrap-" + Joiner.on('_').join(entry.getKey().getRoles()));
       }
 
-      Future<Set<? extends NodeMetadata>> nodesFuture = executorService
+      Future<Set<? extends NodeMetadata>> nodesFuture = EXECUTORS
           .submit(new StartupProcess(clusterSpec.getClusterName(), entry
               .getKey().getNumberOfInstances(), entry.getKey()
               .getMinNumberOfInstances(), maxNumberOfRetries, entry.getKey()
-              .getRoles(), computeService, template, executorService,
+              .getRoles(), computeService, template, EXECUTORS,
               nodeStarterFactory));
       futures.put(entry.getKey(), nodesFuture);
     }

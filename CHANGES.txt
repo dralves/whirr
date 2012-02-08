@@ -50,6 +50,9 @@ Trunk (unreleased changes)
 
     WHIRR-436. Allow Whirr to run from inside OSGi (Ioannis Canellos via asavu)
 
+    WHIRR-422. Integration tests should fail or succeed in a limited 
+    amount of time (asavu)
+
   BUG FIXES
 
     WHIRR-367. Wrong groupId for zookeeper (Joe Crobak via asavu)
@@ -67,6 +70,9 @@ Trunk (unreleased changes)
 
     WHIRR-496. Documentation in 5-Minute guide is missing key 
     option for destroy step (asavu)  
+
+    WHIRR-502. configure_cdh_hadoop.sh: syntax error trying to modify 
+    permissions on $HADOOP_LOG_DIR (asavu)
 
 Release 0.7.0 - 2011-12-11
 

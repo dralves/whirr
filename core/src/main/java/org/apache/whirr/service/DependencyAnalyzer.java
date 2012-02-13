@@ -54,8 +54,11 @@ public class DependencyAnalyzer {
     // process dependency overrides from configuration and set them in the
     // handlers before proceeding to building the graph
     processDependencyOverrides(spec, handlerMap);
+
+    // build the graph
     Graph<String, Integer> rolesGraph = buildGraph(
         collectRolesFromTemplates(spec.getInstanceTemplates()), handlerMap);
+
     Map<String, Integer> levelMappings = Maps.newLinkedHashMap();
     List<Set<String>> stages = Lists.newArrayList();
     Set<String> roots = Sets.newLinkedHashSet();
@@ -105,8 +108,11 @@ public class DependencyAnalyzer {
   private Set<String> processNextStage(Set<String> parents, int currentLevel,
       Map<String, Integer> levelMappings, Graph<String, Integer> rolesGraph) {
     Set<String> children = Sets.newLinkedHashSet();
+    System.out.println("LVM: " + levelMappings);
     for (String parent : parents) {
+      System.out.println("Parent: " + parent);
       children.addAll(rolesGraph.getSuccessors(parent));
+      System.out.println("Children: " + rolesGraph.getSuccessors(parent));
     }
     for (String child : children) {
       if (levelMappings.containsKey(child)) {
@@ -127,17 +133,18 @@ public class DependencyAnalyzer {
     return roles;
   }
 
-  private void addRoleAndParents(String role,
+  private void addRoleAndParents(String role, Set<String> templateRoles,
       Graph<String, Integer> rolesGraph,
       Map<String, ClusterActionHandler> handlerMap) {
-    
+
     try {
       handlerMap.get(role);
     } catch (ComputationException e) {
-      throw new ServiceNotFoundException("A required service cannot be found: "
-          + role + ". Please make sure a handler for this role is available.");
+      throw new ServiceNotFoundException(
+          "A handler required role cannot be found: " + role
+              + ". Please make sure a handler for this role is available.");
     }
-    
+
     rolesGraph.addVertex(role);
     // get this role's parents
     Set<String> parents = null;
@@ -149,7 +156,15 @@ public class DependencyAnalyzer {
     // make sure the parents are in the graph if any.
     for (String parent : parents) {
       if (!rolesGraph.containsVertex(parent)) {
-        addRoleAndParents(parent, rolesGraph, handlerMap);
+        if (!templateRoles.contains(parent)) {
+          throw new ServiceNotFoundException(
+              "Missing configuration for dependency. Role: "
+                  + role
+                  + " requires that role: "
+                  + parent
+                  + " be installed in the cluster but no template has this role.");
+        }
+        addRoleAndParents(parent, templateRoles, rolesGraph, handlerMap);
       }
       rolesGraph.addEdge(edgeCounter++, parent, role);
     }
@@ -160,7 +175,7 @@ public class DependencyAnalyzer {
     Graph<String, Integer> rolesGraph = new DirectedSparseGraph<String, Integer>();
     for (String role : templateRoles) {
       if (!rolesGraph.containsVertex(role)) {
-        addRoleAndParents(role, rolesGraph, handlerMap);
+        addRoleAndParents(role, templateRoles, rolesGraph, handlerMap);
       }
     }
     return rolesGraph;

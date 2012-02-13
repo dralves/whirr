@@ -113,11 +113,11 @@ public class DependencyAnalyzerTest {
 
     @Override
     public Set<String> getRequiredRoles() {
-      return ImmutableSet.of("service-a", "service-e");
+      return ImmutableSet.of("service-a", "service-f");
     }
 
   }
-  
+
   public static class TestServiceE extends AbstractTestService {
 
     @Override
@@ -200,13 +200,36 @@ public class DependencyAnalyzerTest {
         stages.get(1).contains("service-c"));
   }
 
+  /**
+   * This test should fail because service-d depends on a service whose handler
+   * does not exist.
+   */
   @Test(expected = ServiceNotFoundException.class)
-  public void testServiceNotFoundExceptionIsThrown() throws IOException,
-      ConfigurationException, JSchException {
+  public void testFailsBecauseOfUnexistingHandlerForDependency()
+      throws IOException, ConfigurationException, JSchException {
     CompositeConfiguration config = new CompositeConfiguration();
     config.setProperty("whirr.provider", "stub");
     config.setProperty("whirr.cluster-name", "stub-test");
     config.setProperty("whirr.instance-templates", "1 service-d");
+    config.setProperty("whirr.state-store", "memory");
+
+    ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);
+
+    new DependencyAnalyzer().buildStages(clusterSpec,
+        new HandlerMapFactory().create());
+  }
+
+  /**
+   * This test should fail because the user forgot to configure a required
+   * service (service-a)
+   */
+  @Test(expected = ServiceNotFoundException.class)
+  public void testFailsBecauseOfMissingConfigurationForDepedency()
+      throws IOException, ConfigurationException, JSchException {
+    CompositeConfiguration config = new CompositeConfiguration();
+    config.setProperty("whirr.provider", "stub");
+    config.setProperty("whirr.cluster-name", "stub-test");
+    config.setProperty("whirr.instance-templates", "1 service-b");
     config.setProperty("whirr.state-store", "memory");
 
     ClusterSpec clusterSpec = ClusterSpec.withTemporaryKeys(config);

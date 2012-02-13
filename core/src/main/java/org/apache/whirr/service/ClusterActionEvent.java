@@ -19,6 +19,7 @@
 package org.apache.whirr.service;
 
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -30,6 +31,7 @@ import org.jclouds.compute.ComputeServiceContext;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 
 /**
  * An event object which is fired when a {@link org.apache.whirr.ClusterAction}
@@ -46,6 +48,7 @@ public class ClusterActionEvent {
   private Function<ClusterSpec, ComputeServiceContext> getCompute;
   private List<Callable<?>> eventCallables;
   private List<Future<?>> eventFutures;
+  private Set<String> roles = Sets.newHashSet();
   private long executionWaitTime;
 
   public ClusterActionEvent(String action, ClusterSpec clusterSpec,
@@ -126,6 +129,14 @@ public class ClusterActionEvent {
 
   public long getExecutionWaitTime() {
     return executionWaitTime;
+  }
+  
+  public void addRole(String role) {
+    this.roles.add(role);
+  }
+  
+  public Set<String> getRoles() {
+    return roles;
   }
 
 }

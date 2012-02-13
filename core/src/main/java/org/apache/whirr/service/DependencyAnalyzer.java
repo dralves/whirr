@@ -28,6 +28,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.InstanceTemplate;
 
+import com.google.common.collect.ComputationException;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -129,10 +130,14 @@ public class DependencyAnalyzer {
   private void addRoleAndParents(String role,
       Graph<String, Integer> rolesGraph,
       Map<String, ClusterActionHandler> handlerMap) {
-    if (handlerMap.get(role) == null) {
+    
+    try {
+      handlerMap.get(role);
+    } catch (ComputationException e) {
       throw new ServiceNotFoundException("A required service cannot be found: "
-          + role);
+          + role + ". Please make sure a handler for this role is available.");
     }
+    
     rolesGraph.addVertex(role);
     // get this role's parents
     Set<String> parents = null;

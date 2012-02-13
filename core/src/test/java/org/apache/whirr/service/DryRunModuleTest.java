@@ -205,7 +205,7 @@ public class DryRunModuleTest {
     }
   }
 
-  private String getScriptName(RunScriptOnNode script) {
+  public static String getScriptName(RunScriptOnNode script) {
     return ((InitBuilder) ((RunScriptOnNodeAsInitScriptUsingSsh) script)
         .getStatement()).getInstanceName();
   }

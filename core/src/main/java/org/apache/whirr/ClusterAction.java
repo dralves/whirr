@@ -160,12 +160,13 @@ public abstract class ClusterAction {
             clusterSpec, stageTemplate, newCluster, statementBuilder,
             getCompute(), firewallManager);
 
-        Set<String> stateAndTemplateRoles = Sets.intersection(stageRoles,
+        Set<String> stageAndTemplateRoles = Sets.intersection(stageRoles,
             stageTemplate.getRoles());
 
         long eventExecutionWaitTime = 0L;
-        for (String role : stateAndTemplateRoles) {
+        for (String role : stageAndTemplateRoles) {
           if (roleIsInTarget(role)) {
+            event.addRole(role);
             safeGetActionHandler(role).beforeAction(event);
             long handlerExecutionWaitTime = safeGetActionHandler(role)
                 .getOnlineDelayMillis();

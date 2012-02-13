@@ -84,7 +84,7 @@ public abstract class ScriptBasedClusterAction extends ClusterAction {
         .getComputeService();
 
     for (List<ClusterActionEvent> stage : eventsPerStage) {
-      for (ClusterActionEvent event : stage) {
+      for (final ClusterActionEvent event : stage) {
         eventSpecificActions(event);
         StatementBuilder statementBuilder = event.getStatementBuilder();
         if (statementBuilder.isEmpty()) {
@@ -121,7 +121,7 @@ public abstract class ScriptBasedClusterAction extends ClusterAction {
                         LoginCredentials.fromCredentials(credentials))
                         .runAsRoot(true).nameTask(
                             phaseName + "-"
-                                + Joiner.on('_').join(instance.getRoles())));
+                                + Joiner.on('_').join(event.getRoles())));
               } finally {
                 LOG.info("{} phase script run completed on: {}", phaseName,
                     instance.getId());

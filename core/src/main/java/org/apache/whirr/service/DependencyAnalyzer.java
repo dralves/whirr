@@ -108,11 +108,8 @@ public class DependencyAnalyzer {
   private Set<String> processNextStage(Set<String> parents, int currentLevel,
       Map<String, Integer> levelMappings, Graph<String, Integer> rolesGraph) {
     Set<String> children = Sets.newLinkedHashSet();
-    System.out.println("LVM: " + levelMappings);
     for (String parent : parents) {
-      System.out.println("Parent: " + parent);
       children.addAll(rolesGraph.getSuccessors(parent));
-      System.out.println("Children: " + rolesGraph.getSuccessors(parent));
     }
     for (String child : children) {
       if (levelMappings.containsKey(child)) {

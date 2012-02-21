@@ -205,7 +205,7 @@ public class ClusterSpec {
     return withTemporaryKeys(new PropertiesConfiguration());
   }
   @VisibleForTesting
-  public static ClusterSpec withTemporaryKeys(Configuration conf) 
+  public static ClusterSpec withTemporaryKeys(Configuration conf)
   throws ConfigurationException, JSchException, IOException {
     if (!conf.containsKey(Property.PRIVATE_KEY_FILE.getConfigName())) {
       Map<String, File> keys = org.apache.whirr.util.KeyPair.generateTemporaryFiles();
@@ -434,7 +434,8 @@ public class ClusterSpec {
       throws ConfigurationException {
     CompositeConfiguration composed = new CompositeConfiguration();
     composed.addConfiguration(userConfig);
-    composed.addConfiguration(new PropertiesConfiguration(getClass().getClassLoader().getResource(DEFAULT_PROPERTIES)));
+    composed.addConfiguration(new PropertiesConfiguration(
+        getClass().getClassLoader().getResource(DEFAULT_PROPERTIES)));
     return composed;
   }
 
@@ -765,8 +766,7 @@ public class ClusterSpec {
     /*
      * http://stackoverflow.com/questions/2494645#2494645
      */
-    checkArgument(checkNotNull(publicKey, "publicKey")
-            .startsWith("ssh-rsa AAAAB3NzaC1yc2EA"),
+    checkArgument(checkNotNull(publicKey, "publicKey").startsWith("ssh-rsa AAAAB3NzaC1yc2EA"),
         "key should start with ssh-rsa AAAAB3NzaC1yc2EA");
   }
   
@@ -833,6 +833,7 @@ public class ClusterSpec {
   }
 
   public void setClusterUser(String user) {
+    checkArgument(user == null || !user.equals("root"), "cluster-user != root or do not run as root");
     this.clusterUser = user;
   }
 

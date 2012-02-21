@@ -9,6 +9,9 @@ Trunk (unreleased changes)
 
   IMPROVEMENTS
 
+    WHIRR-514. Avoid hardcoded Whirr version number in karaf tests (kve)
+    (orig: Update release instructions or fix update-version script?)
+
     WHIRR-421. Handle more role / service lifecycle events as part 
     of the core functionality (asavu)
 
@@ -52,6 +55,18 @@ Trunk (unreleased changes)
 
     WHIRR-422. Integration tests should fail or succeed in a limited 
     amount of time (asavu)
+
+    WHIRR-347. Support provider-independent environment variables for 
+    cloud credentials (asavu)
+
+    WHIRR-463. Fail fast when running as root (asavu)
+
+    WHIRR-35. Include .pac file for browsing to Hadoop clusters 
+    started on EC2 (asavu)
+
+    WHIRR-507. Make whirr script executable from any path (Marco Didonna via asavu)
+
+    WHIRR-518. Change to OpenJDK (Frank Scholten via asavu)
 
   BUG FIXES
 

@@ -18,22 +18,23 @@
 
 package org.apache.whirr;
 
-import com.google.common.annotations.Beta;
-import com.google.common.base.Function;
-import com.google.common.base.Predicate;
-import com.google.common.base.Predicates;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
+import static org.apache.whirr.RolePredicates.withIds;
+import static org.jclouds.compute.options.RunScriptOptions.Builder.overrideLoginCredentials;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+
 import org.apache.whirr.actions.BootstrapClusterAction;
 import org.apache.whirr.actions.CleanupClusterAction;
 import org.apache.whirr.actions.ConfigureServicesAction;
 import org.apache.whirr.actions.DestroyClusterAction;
 import org.apache.whirr.actions.StartServicesAction;
 import org.apache.whirr.actions.StopServicesAction;
+import org.apache.whirr.service.ComputeCache;
 import org.apache.whirr.state.ClusterStateStore;
 import org.apache.whirr.state.ClusterStateStoreFactory;
-import org.apache.whirr.service.ComputeCache;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.RunScriptOnNodesException;
@@ -43,17 +44,18 @@ import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.NodeState;
 import org.jclouds.compute.options.RunScriptOptions;
 import org.jclouds.domain.Credentials;
+import org.jclouds.domain.LoginCredentials;
 import org.jclouds.scriptbuilder.domain.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Map;
-import java.util.NoSuchElementException;
-import java.util.Set;
-
-import static org.apache.whirr.RolePredicates.withIds;
-import static org.jclouds.compute.options.RunScriptOptions.Builder.overrideCredentialsWith;
+import com.google.common.annotations.Beta;
+import com.google.common.base.Function;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 
 /**
  * This class is used to start and stop clusters.
@@ -90,7 +92,7 @@ public class ClusterController {
   /**
    * @return compute service contexts for use in managing the service
    */
-  protected Function<ClusterSpec, ComputeServiceContext> getCompute() {
+  public Function<ClusterSpec, ComputeServiceContext> getCompute() {
     return getCompute;
   }
 
@@ -261,13 +263,13 @@ public class ClusterController {
     ClusterSpec spec, Predicate<NodeMetadata> condition, Statement statement,
     RunScriptOptions options) throws IOException, RunScriptOnNodesException {
 
-    Credentials credentials = new Credentials(spec.getClusterUser(),
-      spec.getPrivateKey());
+    LoginCredentials credentials = LoginCredentials.builder()
+      .user(spec.getClusterUser()).privateKey(spec.getPrivateKey()).build();
 
     if (options == null) {
       options = defaultRunScriptOptionsForSpec(spec);
-    } else if (options.getOverridingCredentials() == null) {
-      options = options.overrideCredentialsWith(credentials);
+    } else if (options.getLoginUser() == null) {
+      options = options.overrideLoginCredentials(credentials);
     }
     condition = Predicates
       .and(runningInGroup(spec.getClusterName()), condition);
@@ -278,9 +280,9 @@ public class ClusterController {
   }
 
   public RunScriptOptions defaultRunScriptOptionsForSpec(ClusterSpec spec) {
-    Credentials credentials = new Credentials(spec.getClusterUser(),
-      spec.getPrivateKey());
-    return overrideCredentialsWith(credentials).wrapInInitScript(false)
+    LoginCredentials credentials = LoginCredentials.builder()
+      .user(spec.getClusterUser()).privateKey(spec.getPrivateKey()).build();
+    return overrideLoginCredentials(credentials).wrapInInitScript(false)
       .runAsRoot(false);
   }
 

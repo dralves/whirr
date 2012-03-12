@@ -43,7 +43,7 @@
   <modules>
     <module>commands</module>
     <module>feature</module>
-    <module>itests</module>
+<!--     <module>itests</module> -->
   </modules>
 
 

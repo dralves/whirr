@@ -43,8 +43,10 @@
     <module>examples</module>
     <module>services/cassandra</module>
     <module>services/cdh</module>
+    <module>services/cdh-oldtests</module>
     <module>services/ganglia</module>
     <module>services/hadoop</module>
+    <module>services/yarn</module>
     <module>services/zookeeper</module>
     <module>services/hbase</module>
     <module>services/elasticsearch</module>
@@ -66,7 +68,7 @@
     <guava.version>11.0.2</guava.version>
     <hadoop.version>0.20.205.0</hadoop.version>
     <hamcrest.version>1.1</hamcrest.version>
-    <hama.version>0.3.0-incubating</hama.version>
+    <hama.version>0.4.0-incubating</hama.version>
     <hbase.version>0.89.20100924-28</hbase.version>
     <jackson.version>1.5.2</jackson.version>
     <jclouds.version>1.5.0-SNAPSHOT</jclouds.version>

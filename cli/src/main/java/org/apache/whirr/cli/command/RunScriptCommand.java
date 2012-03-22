@@ -152,7 +152,7 @@ public class RunScriptCommand extends AbstractClusterCommand {
 
   private int handleScriptOutput(PrintStream out, PrintStream err,
                                  Map<? extends NodeMetadata, ExecResponse> responses) {
-    int exitStatus = 0;
+    int rc = 0;
     for (Map.Entry<? extends NodeMetadata, ExecResponse> entry : responses.entrySet()) {
       out.printf("** Node %s: %s%n", entry.getKey().getId(),
         Iterables.concat(entry.getKey().getPrivateAddresses(),
@@ -160,12 +160,12 @@ public class RunScriptCommand extends AbstractClusterCommand {
 
       ExecResponse response = entry.getValue();
       if (response.getExitCode() != 0) {
-        exitStatus = response.getExitCode();
+        rc = response.getExitCode();
       }
       out.printf("%s%n", response.getOutput());
       err.printf("%s%n", response.getError());
     }
-    return exitStatus;
+    return rc;
   }
 
   private Statement execFile(String filePath) throws IOException {

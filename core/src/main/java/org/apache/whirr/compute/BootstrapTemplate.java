@@ -22,6 +22,12 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import static org.jclouds.compute.options.TemplateOptions.Builder.runScript;
+import static org.jclouds.scriptbuilder.domain.Statements.appendFile;
+import static org.jclouds.scriptbuilder.domain.Statements.createOrOverwriteFile;
+import static org.jclouds.scriptbuilder.domain.Statements.interpret;
+import static org.jclouds.scriptbuilder.domain.Statements.newStatementList;
+
 import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.InstanceTemplate;
 import org.apache.whirr.service.jclouds.StatementBuilder;
@@ -35,16 +41,10 @@ import org.jclouds.compute.domain.TemplateBuilder;
 import org.jclouds.scriptbuilder.InitBuilder;
 import org.jclouds.scriptbuilder.domain.OsFamily;
 import org.jclouds.scriptbuilder.domain.Statement;
+import org.jclouds.scriptbuilder.statements.login.AdminAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.MalformedURLException;
-
-import static org.jclouds.compute.options.TemplateOptions.Builder.runScript;
-import static org.jclouds.scriptbuilder.domain.Statements.appendFile;
-import static org.jclouds.scriptbuilder.domain.Statements.createOrOverwriteFile;
-import static org.jclouds.scriptbuilder.domain.Statements.interpret;
-import static org.jclouds.scriptbuilder.domain.Statements.newStatementList;
+import com.google.common.base.Joiner;
 
 public class BootstrapTemplate {
 
@@ -52,27 +52,33 @@ public class BootstrapTemplate {
     LoggerFactory.getLogger(BootstrapTemplate.class);
 
   public static Template build(
-    ClusterSpec clusterSpec,
+    final ClusterSpec clusterSpec,
     ComputeService computeService,
     StatementBuilder statementBuilder,
     TemplateBuilderStrategy strategy,
     InstanceTemplate instanceTemplate
-  ) throws MalformedURLException {
+  ) {
+    String name = "bootstrap-" + Joiner.on('_').join(instanceTemplate.getRoles());
 
-    LOG.info("Configuring template");
+    LOG.info("Configuring template for {}", name);
+    
+    statementBuilder.name(name);
 
-    Statement runScript = addUserAndAuthorizeSudo(
-        clusterSpec.getClusterUser(),
-        clusterSpec.getPublicKey(),
-        clusterSpec.getPrivateKey(),
-        statementBuilder.build(clusterSpec));
-
+    AdminAccess adminAccess = AdminAccess.builder()
+      .adminUsername(clusterSpec.getClusterUser())
+      .adminPublicKey(clusterSpec.getPublicKey())
+      .adminPrivateKey(clusterSpec.getPrivateKey()).build();
+    
+    statementBuilder.addStatement(0, adminAccess);
+    
+    Statement bootstrap = statementBuilder.build(clusterSpec);
+    
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Running script:\n{}", runScript.render(OsFamily.UNIX));
+      LOG.debug("Running script {}:\n{}", name, bootstrap.render(OsFamily.UNIX));
     }
-
+    
     TemplateBuilder templateBuilder = computeService.templateBuilder()
-      .options(runScript(runScript));
+      .options(runScript(bootstrap));
     strategy.configureTemplateBuilder(clusterSpec, templateBuilder, instanceTemplate);
 
     return setSpotInstancePriceIfSpecified(
@@ -89,9 +95,9 @@ public class BootstrapTemplate {
       "/tmp/logs",// location of stdout.log and stderr.log
       ImmutableMap.of("newUser", user, "defaultHome", "/home/users"), // variables
       ImmutableList.<Statement> of(
-        ensureUserExistsWithPublicAndPrivateKey(user, publicKey, privateKey),
-        makeSudoersOnlyPermitting(user),
-        statement)
+          ensureUserExistsWithPublicAndPrivateKey(user, publicKey, privateKey),
+          makeSudoersOnlyPermitting(user),
+          statement)
     );
   }
 
@@ -158,9 +164,9 @@ public class BootstrapTemplate {
       appendFile(
         "/etc/sudoers",
         ImmutableSet.of(
-          "root ALL = (ALL) ALL",
-          "%adm ALL = (ALL) ALL",
-          username + " ALL = (ALL) NOPASSWD: ALL")
+            "root ALL = (ALL) ALL",
+            "%adm ALL = (ALL) ALL",
+            username + " ALL = (ALL) NOPASSWD: ALL")
         )
     );
   }

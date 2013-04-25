@@ -17,6 +17,7 @@
  */
 package org.apache.whirr.service.puppet.integration;
 
+import com.google.common.base.Predicate;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.whirr.Cluster;
@@ -24,8 +25,7 @@ import org.apache.whirr.Cluster.Instance;
 import org.apache.whirr.ClusterController;
 import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.TestConstants;
-import org.jclouds.predicates.InetSocketAddressConnect;
-import org.jclouds.predicates.RetryablePredicate;
+import org.jclouds.predicates.SocketOpen;
 import org.jclouds.util.Strings2;
 import org.junit.After;
 import org.junit.Before;
@@ -37,6 +37,8 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
 
+import static org.jclouds.util.Predicates2.retry;
+
 /**
  * Install an http service on the remote machine with puppet!
  */
@@ -45,7 +47,7 @@ public class PuppetServiceTest {
   private ClusterSpec clusterSpec;
   private ClusterController controller;
   private Cluster cluster;
-  private RetryablePredicate<HostAndPort> socketTester;
+  private Predicate<HostAndPort> socketTester;
 
   @Before
   public void setUp() throws Exception {
@@ -58,7 +60,14 @@ public class PuppetServiceTest {
     clusterSpec = ClusterSpec.withTemporaryKeys(config);
     controller = new ClusterController();
     cluster = controller.launchCluster(clusterSpec);
-    socketTester = new RetryablePredicate<HostAndPort>(new InetSocketAddressConnect(), 60, 1, TimeUnit.SECONDS);
+    SocketOpen socketOpen = controller
+      .getCompute()
+      .apply(clusterSpec)
+      .utils()
+      .injector()
+      .getInstance(SocketOpen.class);
+
+    socketTester = retry(socketOpen, 60, 1, TimeUnit.SECONDS);
 
   }
 

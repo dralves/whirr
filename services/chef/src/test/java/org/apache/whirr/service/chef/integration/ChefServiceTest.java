@@ -32,7 +32,6 @@ import org.apache.whirr.service.chef.Recipe;
 import org.jclouds.compute.RunScriptOnNodesException;
 import org.jclouds.compute.domain.ExecResponse;
 import org.jclouds.compute.domain.NodeMetadata;
-import org.jclouds.predicates.RetryablePredicate;
 import org.jclouds.scriptbuilder.domain.Statement;
 import org.jclouds.scriptbuilder.domain.Statements;
 import org.junit.AfterClass;
@@ -48,6 +47,7 @@ import java.util.concurrent.TimeUnit;
 import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertTrue;
 import static junit.framework.Assert.failNotEquals;
+import static org.jclouds.util.Predicates2.retry;
 
 /**
  * Integration test for chef.
@@ -121,21 +121,21 @@ public class ChefServiceTest {
             .next()));
 
     assertTrue("Could not connect with nginx server",
-        new RetryablePredicate<HttpClient>(new Predicate<HttpClient>() {
+      retry(new Predicate<HttpClient>() {
 
-          @Override
-          public boolean apply(HttpClient input) {
-            try {
-              int statusCode = input.executeMethod(getIndex);
-              assertEquals("Status code should be 200", HttpStatus.SC_OK,
-                  statusCode);
-              return true;
-            } catch (Exception e) {
-              return false;
-            }
+        @Override
+        public boolean apply(HttpClient input) {
+          try {
+            int statusCode = input.executeMethod(getIndex);
+            assertEquals("Status code should be 200", HttpStatus.SC_OK,
+              statusCode);
+            return true;
+          } catch (Exception e) {
+            return false;
           }
+        }
 
-        }, 10, 1, TimeUnit.SECONDS).apply(client));
+      }, 10, 1, TimeUnit.SECONDS).apply(client));
 
     String indexPageHTML = getIndex.getResponseBodyAsString();
     assertTrue("The string 'nginx' should appear on the index page",

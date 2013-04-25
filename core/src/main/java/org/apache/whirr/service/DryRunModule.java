@@ -36,12 +36,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import com.google.common.hash.Hashing;
+import com.google.common.io.ByteStreams;
 import org.jclouds.compute.domain.ExecChannel;
 import org.jclouds.compute.domain.ExecResponse;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.events.StatementOnNode;
 import org.jclouds.compute.events.StatementOnNodeSubmission;
-import org.jclouds.crypto.CryptoStreams;
 import org.jclouds.domain.Credentials;
 import org.jclouds.domain.LoginCredentials;
 import org.jclouds.io.Payload;
@@ -203,12 +204,6 @@ public class DryRunModule extends AbstractModule {
       }
 
       @Override
-      public SshClient create(final HostAndPort socket, Credentials loginCreds) {
-        return clientMap.getUnchecked(new Key(socket, loginCreds, find(nodes.values(),
-            new NodeHasAddress(socket.getHostText()))));
-      }
-
-      @Override
       public SshClient create(HostAndPort socket, LoginCredentials credentials) {
         return clientMap.getUnchecked(new Key(socket, credentials, find(nodes.values(),
             new NodeHasAddress(socket.getHostText()))));
@@ -320,7 +315,7 @@ public class DryRunModule extends AbstractModule {
 
   public static String md5Hex(InputSupplier<? extends InputStream> supplier) {
     try {
-      return CryptoStreams.md5Hex(supplier);
+      return Hashing.md5().hashBytes(ByteStreams.toByteArray(supplier)).toString();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

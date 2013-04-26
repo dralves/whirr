@@ -18,7 +18,10 @@
 
 package org.apache.whirr.service;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static org.jclouds.scriptbuilder.domain.Statements.exec;
+import static org.jclouds.util.Predicates2.retry;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
@@ -26,7 +29,13 @@ import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Supplier;
+import com.google.inject.Injector;
+import com.google.inject.Key;
+import com.google.inject.TypeLiteral;
 import org.apache.commons.io.IOUtils;
 import org.apache.whirr.Cluster;
 import org.apache.whirr.Cluster.Instance;
@@ -36,6 +45,14 @@ import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.ec2.EC2ApiMetadata;
 import org.jclouds.ec2.EC2Client;
 import org.jclouds.ec2.domain.IpProtocol;
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApi;
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
+import org.jclouds.googlecomputeengine.config.UserProject;
+import org.jclouds.googlecomputeengine.domain.Firewall;
+import org.jclouds.googlecomputeengine.domain.Network;
+import org.jclouds.googlecomputeengine.domain.Operation;
+import org.jclouds.googlecomputeengine.features.FirewallApi;
+import org.jclouds.googlecomputeengine.options.FirewallOptions;
 import org.jclouds.openstack.nova.v2_0.NovaApiMetadata;
 import org.jclouds.openstack.nova.v2_0.domain.Ingress;
 import org.jclouds.openstack.nova.v2_0.domain.SecurityGroup;
@@ -284,6 +301,7 @@ public class FirewallManager {
   public static void authorizeIngress(ComputeServiceContext computeServiceContext,
                                       Set<Instance> instances, ClusterSpec clusterSpec, List<String> cidrs, int... ports) {
 
+
     if (EC2ApiMetadata.CONTEXT_TOKEN.isAssignableFrom(computeServiceContext.getBackendType())) {
       // This code (or something like it) may be added to jclouds (see
       // http://code.google.com/p/jclouds/issues/detail?id=336).
@@ -342,6 +360,72 @@ public class FirewallManager {
       } else {
         LOG.warn("OpenStack security group extension not available for this cloud.");
       }
+    } else if (GoogleComputeEngineApiMetadata.CONTEXT_TOKEN.isAssignableFrom(computeServiceContext.getBackendType())) {
+       GoogleComputeEngineApi api = computeServiceContext.unwrap(GoogleComputeEngineApiMetadata.CONTEXT_TOKEN).getApi();
+       Injector injector = computeServiceContext.utils().injector();
+       String userProject = injector
+         .getInstance(Key.get(new TypeLiteral<Supplier<String>>() {}, UserProject.class)).get();
+
+       Network clusterNetwork = api.getNetworkApiForProject(userProject).get("jclouds-"+clusterSpec.getClusterName());
+       checkNotNull(clusterNetwork, "the cluster has no network");
+
+       FirewallApi firewallApi = api.getFirewallApiForProject(userProject);
+       // get the default firewall (which will definitely exist)
+       Firewall firewall = firewallApi.get("jclouds-"+clusterSpec.getClusterName());
+
+       // update the default firewall with the provided cidr and ports for external access
+       FirewallOptions externalAccess = new FirewallOptions()
+         .name(firewall.getName())
+         .network(firewall.getNetwork())
+         .allowedRules(firewall.getAllowed())
+         .sourceTags(firewall.getSourceTags())
+         .targetTags(firewall.getTargetTags());
+
+       for (int port : ports) {
+         externalAccess.addAllowedRule(Firewall.Rule.builder().IPProtocol(Firewall.Rule.IPProtocol.TCP).addPort(port).build());
+       }
+       for (String cidr : cidrs) {
+         externalAccess.addSourceRange(cidr);
+       }
+
+       waitOperationComplete(injector, firewallApi.update(firewall.getName(), externalAccess));
+
+       // create a firewall for internal communication (as gce does not do that by default)
+       FirewallOptions internalAccess = new FirewallOptions()
+         .name("jclouds-zookeeper-internal")
+         .network(firewall.getNetwork())
+         .addSourceRange(clusterNetwork.getIPv4Range())
+         .addAllowedRule(Firewall.Rule.builder()
+           .IPProtocol(Firewall.Rule.IPProtocol.TCP)
+           .addPortRange(1, 65535)
+           .build())
+         .addAllowedRule(Firewall.Rule.builder()
+           .IPProtocol(Firewall.Rule.IPProtocol.UDP)
+           .addPortRange(1, 65535)
+           .build())
+         .addAllowedRule(Firewall.Rule.builder()
+           .IPProtocol(Firewall.Rule.IPProtocol.ICMP)
+           .build());
+
+       // TODO the creation of this additional firewall makes jclouds unable to delete the network
+       // we need to fix that either here or there
+       Firewall internalAccessExisting = firewallApi.get(internalAccess.getName());
+       if (internalAccessExisting != null ){
+         waitOperationComplete(injector,firewallApi.update(internalAccessExisting.getName(),internalAccess));
+       } else {
+         waitOperationComplete(injector,firewallApi
+           .createInNetwork(internalAccess.getName(), firewall.getNetwork(), internalAccess));
+       }
+
     }
+  }
+
+  private static void waitOperationComplete(Injector injector, Operation operation){
+    AtomicReference<Operation> op  = new AtomicReference<Operation>(operation);
+    Predicate<AtomicReference<Operation>> operationDonePredicate = injector
+      .getInstance(Key.get(new TypeLiteral<Predicate<AtomicReference<Operation>>>() {}));
+    retry(operationDonePredicate, 60, 1, TimeUnit.SECONDS).apply(op);
+    checkState(op.get().getStatus() == Operation.Status.DONE, "operation was not completed");
+    checkState(!op.get().getHttpError().isPresent(), "operation finished with errors: "+op.get().getErrors());
   }
 }

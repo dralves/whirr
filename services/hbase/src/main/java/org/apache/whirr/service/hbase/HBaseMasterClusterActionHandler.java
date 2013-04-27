@@ -21,6 +21,7 @@ package org.apache.whirr.service.hbase;
 import static org.apache.whirr.RolePredicates.role;
 import static org.apache.whirr.service.hbase.HBaseConfigurationBuilder.buildHBaseEnv;
 import static org.apache.whirr.service.hbase.HBaseConfigurationBuilder.buildHBaseSite;
+import static org.apache.whirr.util.Utils.preferredHostname;
 import static org.jclouds.scriptbuilder.domain.Statements.call;
 
 import com.google.common.base.Charsets;
@@ -86,12 +87,11 @@ public class HBaseMasterClusterActionHandler extends HBaseClusterActionHandler {
     Configuration conf = getConfiguration(clusterSpec);
 
     LOG.info("Authorizing firewall");
-    Instance instance = cluster.getInstanceMatching(role(ROLE));
-    InetAddress masterPublicAddress = instance.getPublicAddress();
+    Instance master = cluster.getInstanceMatching(role(ROLE));
 
     event.getFirewallManager().addRules(
       Rule.create()
-        .destination(instance)
+        .destination(master)
         .ports(MASTER_WEB_UI_PORT, MASTER_PORT)
     );
 
@@ -115,8 +115,7 @@ public class HBaseMasterClusterActionHandler extends HBaseClusterActionHandler {
     Thread.currentThread().setContextClassLoader(oldTccl);
   }
 
-    String master = masterPublicAddress.getHostName();
-    String quorum = ZooKeeperCluster.getHosts(cluster);
+    String quorum = ZooKeeperCluster.getHosts(cluster, clusterSpec);
 
     String tarurl = prepareRemoteFileUrl(event,
       conf.getString(HBaseConstants.KEY_TARBALL_URL));
@@ -125,7 +124,7 @@ public class HBaseMasterClusterActionHandler extends HBaseClusterActionHandler {
     addStatement(event, call(
       getConfigureFunction(conf),
       ROLE,
-      HBaseConstants.PARAM_MASTER, master,
+      HBaseConstants.PARAM_MASTER, preferredHostname(master, clusterSpec),
       HBaseConstants.PARAM_QUORUM, quorum,
       HBaseConstants.PARAM_TARBALL_URL, tarurl
     ));
@@ -143,7 +142,7 @@ public class HBaseMasterClusterActionHandler extends HBaseClusterActionHandler {
     InetAddress masterPublicAddress = instance.getPublicAddress();
 
     LOG.info("Web UI available at http://{}", masterPublicAddress.getHostName());
-    String quorum = ZooKeeperCluster.getHosts(cluster);
+    String quorum = ZooKeeperCluster.getHosts(cluster, clusterSpec);
     Properties config = createClientSideProperties(masterPublicAddress, quorum);
     createClientSideHadoopSiteFile(clusterSpec, config);
     createProxyScript(clusterSpec, cluster);

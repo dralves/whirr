@@ -22,12 +22,12 @@ import static org.apache.whirr.RolePredicates.role;
 import static org.apache.whirr.service.FirewallManager.Rule;
 import static org.apache.whirr.service.hbase.HBaseConfigurationBuilder.buildHBaseEnv;
 import static org.apache.whirr.service.hbase.HBaseConfigurationBuilder.buildHBaseSite;
+import static org.apache.whirr.util.Utils.preferredHostname;
 import static org.jclouds.scriptbuilder.domain.Statements.call;
 
 import org.apache.whirr.template.TemplateUtils;
 
 import java.io.IOException;
-import java.net.InetAddress;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
@@ -76,13 +76,12 @@ public class HBaseRegionServerClusterActionHandler extends HBaseClusterActionHan
     Cluster cluster = event.getCluster();
     Configuration conf = getConfiguration(clusterSpec);
 
-    Instance instance = cluster.getInstanceMatching(
+    Instance master = cluster.getInstanceMatching(
       role(HBaseMasterClusterActionHandler.ROLE));
-    InetAddress masterPublicAddress = instance.getPublicAddress();
 
     event.getFirewallManager().addRules(
       Rule.create()
-        .destination(instance)
+        .destination(master)
         .ports(REGIONSERVER_WEB_UI_PORT, REGIONSERVER_PORT)
     );
 
@@ -105,8 +104,7 @@ public class HBaseRegionServerClusterActionHandler extends HBaseClusterActionHan
       Thread.currentThread().setContextClassLoader(oldTccl);
     }
 
-    String master = masterPublicAddress.getHostName();
-    String quorum = ZooKeeperCluster.getHosts(cluster);
+    String quorum = ZooKeeperCluster.getHosts(cluster, clusterSpec);
 
     String tarurl = prepareRemoteFileUrl(event,
       conf.getString(HBaseConstants.KEY_TARBALL_URL));
@@ -115,7 +113,7 @@ public class HBaseRegionServerClusterActionHandler extends HBaseClusterActionHan
     addStatement(event, call(
       getConfigureFunction(conf),
       ROLE,
-      HBaseConstants.PARAM_MASTER, master,
+      HBaseConstants.PARAM_MASTER, preferredHostname(master, clusterSpec),
       HBaseConstants.PARAM_QUORUM, quorum,
       HBaseConstants.PARAM_TARBALL_URL, tarurl)
     );

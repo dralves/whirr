@@ -33,6 +33,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 import org.apache.commons.configuration.CompositeConfiguration;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
@@ -195,9 +197,14 @@ public class ClusterSpec {
     JDK_INSTALL_URL(String.class, false, "JDK install URL"),
     
     KERBEROS_REALM(String.class, false, "Kerberos realm to use in security configuration"),
-                             
-    AWS_EC2_PLACEMENT_GROUP(String.class, false, "If given, use this existing EC2 placement group. (aws-ec2 specific option)");
-    
+
+    AWS_EC2_PLACEMENT_GROUP(String.class, false, "If given, use this existing EC2 placement group. (aws-ec2 specific option)"),
+
+    PREFER_PRIVATE_IPS(Boolean.class, false, "If provided whirr will prefer setting private ips for internode comms, when possible"),
+
+    EPHEMERAL_DISKS(String.class, false, "Comma separated list of ephemeral disks and mount points" +
+      "e.g. /dev/sdb:/mnt/sdb,/dev/sdc:/mnt/sdc");
+
     private Class<?> type;
     private boolean multipleArguments;
     private String description;
@@ -328,7 +335,11 @@ public class ClusterSpec {
   private Configuration config;
 
   private Map<String,Node> byonNodes;
-  
+
+  private boolean preferPrivateIps;
+
+  private List<String> ephemeralDisks;
+
   public ClusterSpec() throws ConfigurationException {
     this(new PropertiesConfiguration());
   }
@@ -418,6 +429,17 @@ public class ClusterSpec {
     
     setVersion(getString(Property.VERSION));
     setRunUrlBase(getString(Property.RUN_URL_BASE));
+
+    setPreferPrivateIps(config.getBoolean(Property.PREFER_PRIVATE_IPS.getConfigName(), false));
+
+    ImmutableList.Builder<String> ephemeralDisksBuilder = ImmutableList.builder();
+    String ephemeralDisksList = config.getString(Property.EPHEMERAL_DISKS.getConfigName(), null);
+    if (ephemeralDisksList != null) {
+      for (String diskAndMountPoint : Splitter.on(",").split(ephemeralDisksList)) {
+        ephemeralDisksBuilder.add(diskAndMountPoint);
+      }
+    }
+    setEphemeralDisks(ephemeralDisksBuilder.build());
   }
   
   /**
@@ -477,7 +499,11 @@ public class ClusterSpec {
     r.setKerberosRealm(getKerberosRealm());
 
     r.setByonNodes(getByonNodes());
-    
+
+    r.setPreferPrivateIps(isPreferPrivateIps());
+
+    r.setEphemeralDisks(getEphemeralDisks());
+
     return r;
   }
 
@@ -897,7 +923,23 @@ public class ClusterSpec {
     this.kerberosRealm = kerberosRealm;
   }
 
-/**
+  public boolean isPreferPrivateIps() {
+    return preferPrivateIps;
+  }
+
+  public void setPreferPrivateIps(boolean preferPrivateIps) {
+    this.preferPrivateIps = preferPrivateIps;
+  }
+
+  public List<String> getEphemeralDisks() {
+    return ephemeralDisks;
+  }
+
+  public void setEphemeralDisks(List<String> ephemeralDisks) {
+    this.ephemeralDisks = ephemeralDisks;
+  }
+
+  /**
    * The rsa public key which is authorized to login to your on the cloud nodes.
    * 
    * @param publicKey
@@ -1143,6 +1185,8 @@ public class ClusterSpec {
       .add("kerberosRealm", getKerberosRealm())
       .add("firewallRules", getByonNodes())
       .add("byonNodes", getByonNodes())
+      .add("preferPrivateIps", isPreferPrivateIps())
+      .add("ephemeralDisks", getEphemeralDisks())
       .toString();
   }
 }

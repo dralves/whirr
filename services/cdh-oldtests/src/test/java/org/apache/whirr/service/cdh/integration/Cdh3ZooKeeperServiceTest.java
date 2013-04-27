@@ -57,7 +57,7 @@ public class Cdh3ZooKeeperServiceTest {
     controller = new ClusterController();
     
     cluster = controller.launchCluster(clusterSpec);
-    hosts = ZooKeeperCluster.getHosts(cluster);
+    hosts = ZooKeeperCluster.getHosts(cluster, clusterSpec);
   }
 
   @Test

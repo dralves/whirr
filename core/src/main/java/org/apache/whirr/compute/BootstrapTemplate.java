@@ -25,6 +25,7 @@ import static org.jclouds.scriptbuilder.domain.Statements.interpret;
 import static org.jclouds.scriptbuilder.domain.Statements.newStatementList;
 import static org.jclouds.scriptbuilder.statements.ssh.SshStatements.sshdConfig;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.InstanceTemplate;
 import org.apache.whirr.service.jclouds.StatementBuilder;
@@ -37,6 +38,7 @@ import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.domain.Template;
 import org.jclouds.compute.domain.TemplateBuilder;
+import org.jclouds.googlecomputeengine.GoogleComputeEngineApiMetadata;
 import org.jclouds.scriptbuilder.domain.OsFamily;
 import org.jclouds.scriptbuilder.domain.Statement;
 import org.slf4j.Logger;
@@ -46,6 +48,8 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+
+import java.util.List;
 
 public class BootstrapTemplate {
 
@@ -58,6 +62,9 @@ public class BootstrapTemplate {
     StatementBuilder statementBuilder,
     InstanceTemplate instanceTemplate
   ) {
+
+    LOG.debug("Bootstrapping with cluster spec: {}", clusterSpec);
+
     String name = "bootstrap-" + Joiner.on('_').join(instanceTemplate.getRoles());
 
     LOG.info("Configuring template for {}", name);
@@ -65,6 +72,9 @@ public class BootstrapTemplate {
     statementBuilder.name(name);
     ensureUserExistsAndAuthorizeSudo(statementBuilder, clusterSpec.getClusterUser(),
         clusterSpec.getPublicKey(), clusterSpec.getPrivateKey());
+
+    formatAndMountEphemeralDisksIfRequired(computeService.getContext(), clusterSpec, statementBuilder);
+
     Statement bootstrap = statementBuilder.build(clusterSpec);
 
     if (LOG.isDebugEnabled()) {
@@ -178,6 +188,27 @@ public class BootstrapTemplate {
           username + " ALL = (ALL) NOPASSWD: ALL")
         )
     );
+  }
+
+  private static void formatAndMountEphemeralDisksIfRequired(
+    ComputeServiceContext context, ClusterSpec spec, StatementBuilder statementBuilder){
+    if (GoogleComputeEngineApiMetadata.CONTEXT_TOKEN.isAssignableFrom(context.getBackendType())) {
+      ImmutableList.Builder<Statement> statements = ImmutableList.builder();
+      for (String diskAndMountPoint : spec.getEphemeralDisks()){
+        String[] splitted = diskAndMountPoint.split(":");
+        String disk = splitted[0];
+        String mountPoint = splitted[1];
+        statements.add(
+          interpret(
+            "mkdir "+mountPoint,
+            "sudo /usr/share/google/safe_format_and_mount -m \"mkfs.ext4 -F\" "+disk+" "+mountPoint
+          ));
+      }
+      List<Statement> mountAndFormatStmts = statements.build();
+      if (!mountAndFormatStmts.isEmpty()){
+        statementBuilder.addStatements(mountAndFormatStmts.toArray(new Statement[mountAndFormatStmts.size()]));
+      }
+    }
   }
 
   private static Statement disablePasswordBasedAuth() {

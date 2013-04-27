@@ -19,6 +19,8 @@
 package org.apache.whirr.service.hadoop;
 
 import static org.apache.whirr.RolePredicates.role;
+import static org.apache.whirr.service.hadoop.HadoopCluster.getNamenode;
+import static org.apache.whirr.util.Utils.preferredAddress;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -46,14 +48,14 @@ public class HadoopJobTrackerClusterActionHandler extends HadoopNameNodeClusterA
   @Override
   protected void doBeforeConfigure(ClusterActionEvent event) throws IOException {
     Cluster cluster = event.getCluster();
-    
+
     Instance jobtracker = cluster.getInstanceMatching(role(ROLE));
     event.getFirewallManager().addRules(
         Rule.create()
           .destination(jobtracker)
           .ports(HadoopCluster.JOBTRACKER_WEB_UI_PORT),
         Rule.create()
-          .source(HadoopCluster.getNamenodePublicAddress(cluster).getHostAddress())
+          .source(preferredAddress(getNamenode(cluster), event.getClusterSpec()).getHostAddress())
           .destination(jobtracker)
           .ports(HadoopCluster.JOBTRACKER_PORT)
     );
@@ -67,7 +69,7 @@ public class HadoopJobTrackerClusterActionHandler extends HadoopNameNodeClusterA
     
     LOG.info("Completed configuration of {} role {}", clusterSpec.getClusterName(), getRole());
 
-    InetAddress jobtrackerPublicAddress = HadoopCluster.getJobTrackerPublicAddress(cluster);
+    InetAddress jobtrackerPublicAddress = HadoopCluster.getJobTracker(cluster).getPublicAddress();
 
     LOG.info("Jobtracker web UI available at http://{}:{}",
       jobtrackerPublicAddress.getHostName(), HadoopCluster.JOBTRACKER_WEB_UI_PORT);

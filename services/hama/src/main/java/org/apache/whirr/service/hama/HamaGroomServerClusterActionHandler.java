@@ -60,7 +60,7 @@ public class HamaGroomServerClusterActionHandler extends
         HamaConstants.FUNCTION_POST_CONFIGURE);
 
     String master = masterPublicAddress.getHostName();
-    String quorum = ZooKeeperCluster.getHosts(cluster);
+    String quorum = ZooKeeperCluster.getHosts(cluster, clusterSpec);
 
     String tarurl = prepareRemoteFileUrl(event, getConfiguration(clusterSpec)
         .getString(HamaConstants.KEY_TARBALL_URL));

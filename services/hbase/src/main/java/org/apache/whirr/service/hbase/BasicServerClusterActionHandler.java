@@ -20,12 +20,12 @@ package org.apache.whirr.service.hbase;
 
 import static org.apache.whirr.RolePredicates.role;
 import static org.apache.whirr.service.FirewallManager.Rule;
+import static org.apache.whirr.util.Utils.preferredHostname;
 import static org.jclouds.scriptbuilder.domain.Statements.call;
 
 import org.apache.commons.configuration.Configuration;
 
 import java.io.IOException;
-import java.net.InetAddress;
 
 import org.apache.whirr.Cluster;
 import org.apache.whirr.ClusterSpec;
@@ -82,17 +82,15 @@ public class BasicServerClusterActionHandler extends HBaseClusterActionHandler {
       port = getConfiguration(clusterSpec).getInt(configKeyPort, defaultPort);
     }
 
-    Cluster.Instance instance = cluster.getInstanceMatching(role(role));
-    InetAddress masterPublicAddress = instance.getPublicAddress();
+    Cluster.Instance master = cluster.getInstanceMatching(role(role));
 
     event.getFirewallManager().addRule(
-      Rule.create().destination(instance).port(port)
+      Rule.create().destination(master).port(port)
     );
 
     handleFirewallRules(event);
-    
-    String master = masterPublicAddress.getHostName();
-    String quorum = ZooKeeperCluster.getHosts(cluster);
+
+    String quorum = ZooKeeperCluster.getHosts(cluster, clusterSpec);
 
     String tarurl = prepareRemoteFileUrl(event,
       getConfiguration(clusterSpec).getString(HBaseConstants.KEY_TARBALL_URL));
@@ -101,7 +99,7 @@ public class BasicServerClusterActionHandler extends HBaseClusterActionHandler {
     addStatement(event, call(
       getConfigureFunction(getConfiguration(clusterSpec)),
       role,
-      HBaseConstants.PARAM_MASTER, master,
+      HBaseConstants.PARAM_MASTER, preferredHostname(master, clusterSpec),
       HBaseConstants.PARAM_QUORUM, quorum,
       HBaseConstants.PARAM_PORT, Integer.toString(port),
       HBaseConstants.PARAM_TARBALL_URL, tarurl)

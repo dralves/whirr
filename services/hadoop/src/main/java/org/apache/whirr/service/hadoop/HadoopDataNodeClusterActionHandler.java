@@ -20,7 +20,6 @@ package org.apache.whirr.service.hadoop;
 
 import java.io.IOException;
 
-import org.apache.whirr.Cluster;
 import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.service.ClusterActionEvent;
 import org.slf4j.Logger;
@@ -42,7 +41,6 @@ public class HadoopDataNodeClusterActionHandler extends HadoopClusterActionHandl
   protected void afterConfigure(ClusterActionEvent event) throws IOException,
       InterruptedException {
     ClusterSpec clusterSpec = event.getClusterSpec();
-    Cluster cluster = event.getCluster();
     
     // TODO: wait for TTs to come up (done in test for the moment)
     

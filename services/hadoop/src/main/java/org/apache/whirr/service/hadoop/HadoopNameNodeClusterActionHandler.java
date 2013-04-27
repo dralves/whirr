@@ -19,6 +19,10 @@
 package org.apache.whirr.service.hadoop;
 
 import static org.apache.whirr.RolePredicates.role;
+import static org.apache.whirr.service.hadoop.HadoopCluster.getJobTracker;
+import static org.apache.whirr.service.hadoop.HadoopCluster.getNamenode;
+import static org.apache.whirr.util.Utils.preferredAddress;
+import static org.apache.whirr.util.Utils.preferredHostname;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Joiner;
@@ -59,7 +63,7 @@ public class HadoopNameNodeClusterActionHandler extends HadoopClusterActionHandl
           .destination(namenode)
           .ports(HadoopCluster.NAMENODE_WEB_UI_PORT),
         Rule.create()
-          .source(namenode.getPublicAddress().getHostAddress())
+          .source(preferredAddress(namenode,event.getClusterSpec()).getHostAddress())
           .destination(namenode)
           .ports(HadoopCluster.NAMENODE_PORT, HadoopCluster.JOBTRACKER_PORT)
     );
@@ -74,13 +78,11 @@ public class HadoopNameNodeClusterActionHandler extends HadoopClusterActionHandl
     // TODO: wait for TTs to come up (done in test for the moment)
     
     LOG.info("Completed configuration of {} role {}", clusterSpec.getClusterName(), getRole());
-    InetAddress namenodePublicAddress = HadoopCluster.getNamenodePublicAddress(cluster);
-    InetAddress jobtrackerPublicAddress = HadoopCluster.getJobTrackerPublicAddress(cluster);
 
     LOG.info("Namenode web UI available at http://{}:{}",
-      namenodePublicAddress.getHostName(), HadoopCluster.NAMENODE_WEB_UI_PORT);
+      HadoopCluster.getNamenode(cluster).getPublicAddress(), HadoopCluster.NAMENODE_WEB_UI_PORT);
 
-    Properties config = createClientSideProperties(clusterSpec, namenodePublicAddress, jobtrackerPublicAddress);
+    Properties config = createClientSideProperties(clusterSpec, getNamenode(cluster), getJobTracker(cluster));
     createClientSideHadoopSiteFile(clusterSpec, config);
     createProxyScript(clusterSpec, cluster);
     Properties combined = new Properties();
@@ -90,12 +92,17 @@ public class HadoopNameNodeClusterActionHandler extends HadoopClusterActionHandl
   }
 
   private Properties createClientSideProperties(ClusterSpec clusterSpec,
-      InetAddress namenode, InetAddress jobtracker) throws IOException {
+      Instance namenode, Instance jobtracker) throws IOException {
     Properties config = new Properties();
+    // set the public ui's to the public addresses independently of the preference
+    config.setProperty("dfs.http.address", namenode.getPublicHostName());
+    config.setProperty("mapred.job.tracker.http.address", jobtracker.getPublicHostName());
+
+    // set the internal addresses to whatever the user chose
     config.setProperty("hadoop.job.ugi", "root,root");
-    config.setProperty("fs.default.name", String.format("hdfs://%s:8020/", namenode.getHostName()));
+    config.setProperty("fs.default.name", String.format("hdfs://%s:8020/", preferredHostname(namenode, clusterSpec)));
     if (jobtracker != null) {
-      config.setProperty("mapred.job.tracker", String.format("%s:8021", jobtracker.getHostName()));
+      config.setProperty("mapred.job.tracker", String.format("%s:8021", preferredHostname(jobtracker, clusterSpec)));
     }
     config.setProperty("hadoop.socks.server", "localhost:6666");
     config.setProperty("hadoop.rpc.socket.factory.class.default", "org.apache.hadoop.net.SocksSocketFactory");
@@ -129,7 +136,7 @@ public class HadoopNameNodeClusterActionHandler extends HadoopClusterActionHandl
     File hadoopProxyFile = new File(configDir, "hadoop-proxy.sh");
     try {
       HadoopProxy proxy = new HadoopProxy(clusterSpec, cluster);
-      InetAddress namenode = HadoopCluster.getNamenodePublicAddress(cluster);
+      InetAddress namenode = getNamenode(cluster).getPublicAddress();
       String script = String.format("echo 'Running proxy to Hadoop cluster at %s. " +
           "Use Ctrl-c to quit.'\n", namenode.getHostName())
           + Joiner.on(" ").join(proxy.getProxyCommand());

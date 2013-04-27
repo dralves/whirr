@@ -18,7 +18,9 @@
 
 package org.apache.whirr.util;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.net.InetAddress;
 import java.util.Map;
 
 import org.apache.whirr.Cluster;
@@ -77,5 +79,19 @@ public class Utils {
       }
       counter++;
     }
+  }
+
+  public static InetAddress preferredAddress(Instance instance, ClusterSpec clusterSpec) throws IOException {
+    if  (clusterSpec.isPreferPrivateIps()){
+      return instance.getPrivateAddress();
+    }
+    return instance.getPublicAddress();
+  }
+
+  public static String preferredHostname(Instance instance, ClusterSpec clusterSpec) throws IOException {
+    if (clusterSpec.isPreferPrivateIps()){
+      return instance.getPrivateIp();
+    }
+    return instance.getPublicHostName();
   }
 }

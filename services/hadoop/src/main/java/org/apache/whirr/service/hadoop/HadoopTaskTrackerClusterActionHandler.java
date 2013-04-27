@@ -19,6 +19,8 @@
 package org.apache.whirr.service.hadoop;
 
 import static org.apache.whirr.RolePredicates.role;
+import static org.apache.whirr.service.hadoop.HadoopCluster.getNamenode;
+import static org.apache.whirr.util.Utils.preferredAddress;
 
 import java.io.IOException;
 
@@ -54,7 +56,7 @@ public class HadoopTaskTrackerClusterActionHandler extends HadoopClusterActionHa
           .destination(jobtracker)
           .ports(HadoopCluster.JOBTRACKER_WEB_UI_PORT),
         Rule.create()
-          .source(HadoopCluster.getNamenodePublicAddress(cluster).getHostAddress())
+          .source(preferredAddress(getNamenode(cluster),event.getClusterSpec()).getHostAddress())
           .destination(jobtracker)
           .ports(HadoopCluster.JOBTRACKER_PORT)
     );

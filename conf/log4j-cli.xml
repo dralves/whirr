@@ -51,6 +51,15 @@
     <level value="DEBUG" />
   </logger>
 
+  <logger name="jclouds.headers">
+    <level value="DEBUG" />
+  </logger>
+
+  <logger name="jclouds.wire">
+    <level value="DEBUG" />
+  </logger>
+
+
   <logger name="jclouds.ssh">
     <level value="ERROR" />
   </logger>

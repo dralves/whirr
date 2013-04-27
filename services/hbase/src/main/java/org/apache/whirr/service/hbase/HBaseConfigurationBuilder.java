@@ -31,6 +31,7 @@ import org.jclouds.scriptbuilder.domain.Statement;
 import java.io.IOException;
 
 import static org.apache.whirr.RolePredicates.role;
+import static org.apache.whirr.util.Utils.preferredHostname;
 
 public class HBaseConfigurationBuilder {
   public static Statement buildHBaseSite(String path, ClusterSpec clusterSpec, Cluster cluster)
@@ -46,10 +47,9 @@ public class HBaseConfigurationBuilder {
 
     Cluster.Instance master = cluster.getInstanceMatching(
       role(HBaseMasterClusterActionHandler.ROLE));
-    String masterHostName = master.getPublicHostName();
 
-    config.setProperty("hbase.rootdir", String.format("hdfs://%s:8020/hbase", masterHostName));
-    config.setProperty("hbase.zookeeper.quorum", ZooKeeperCluster.getHosts(cluster));
+    config.setProperty("hbase.rootdir", String.format("hdfs://%s:8020/hbase", preferredHostname(master, clusterSpec)));
+    config.setProperty("hbase.zookeeper.quorum", ZooKeeperCluster.getHosts(cluster, clusterSpec));
 
     return config;
   }

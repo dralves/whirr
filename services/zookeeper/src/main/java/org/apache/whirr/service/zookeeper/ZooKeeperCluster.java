@@ -21,6 +21,7 @@ package org.apache.whirr.service.zookeeper;
 import com.google.common.base.Joiner;
 
 import org.apache.whirr.Cluster;
+import org.apache.whirr.ClusterSpec;
 import org.apache.whirr.RolePredicates;
 
 public class ZooKeeperCluster {
@@ -32,7 +33,7 @@ public class ZooKeeperCluster {
     );
   }
 
-  public static String getHosts(Cluster cluster) {
-    return getHosts(cluster, false);
+  public static String getHosts(Cluster cluster, ClusterSpec spec) {
+    return getHosts(cluster, spec.isPreferPrivateIps());
   }
 }

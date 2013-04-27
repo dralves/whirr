@@ -59,7 +59,7 @@ public class ZooKeeperServiceTest {
     controller = new ClusterControllerFactory().create(clusterSpec.getServiceName());
     
     cluster = controller.launchCluster(clusterSpec);
-    hosts = ZooKeeperCluster.getHosts(cluster);
+    hosts = ZooKeeperCluster.getHosts(cluster, clusterSpec);
   }
   
   @Test(timeout = TestConstants.ITEST_TIMEOUT)

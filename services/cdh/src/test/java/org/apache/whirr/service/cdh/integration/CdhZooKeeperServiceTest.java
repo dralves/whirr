@@ -58,7 +58,7 @@ public class CdhZooKeeperServiceTest {
     controller = new ClusterController();
     
     cluster = controller.launchCluster(clusterSpec);
-    hosts = ZooKeeperCluster.getHosts(cluster);
+    hosts = ZooKeeperCluster.getHosts(cluster, clusterSpec);
   }
 
   @Test (timeout = TestConstants.ITEST_TIMEOUT)

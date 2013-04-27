@@ -175,7 +175,7 @@ public class ZooKeeperClusterActionHandler extends ClusterActionHandlerSupport {
           try {
             String host;
             if(internalHost) {
-              host = instance.getPrivateHostName();
+              host = instance.getPrivateIp();
             } else {
               host = instance.getPublicHostName();
             }

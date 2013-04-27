@@ -18,7 +18,9 @@
 
 package org.apache.whirr.service.hadoop;
 
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.whirr.RolePredicates.role;
+import static org.apache.whirr.util.Utils.preferredHostname;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
@@ -96,9 +98,9 @@ public class HadoopConfigurationBuilder {
 
     Instance namenode = cluster
         .getInstanceMatching(role(HadoopNameNodeClusterActionHandler.ROLE));
-    LOG.debug("hadoop building common configuration, with hostname "+namenode.getPublicHostName());
+    LOG.debug("hadoop building common configuration, with hostname "+ preferredHostname(namenode,clusterSpec));
     config.setProperty("fs.default.name", String.format("hdfs://%s:8020/",
-        namenode.getPublicHostName()));
+      preferredHostname(namenode,clusterSpec)));
     return config;
   }
   
@@ -156,7 +158,7 @@ public class HadoopConfigurationBuilder {
         .getInstancesMatching(role(HadoopJobTrackerClusterActionHandler.ROLE));
     if (!jobtracker.isEmpty()) {
       config.setProperty("mapred.job.tracker", String.format("%s:8021",
-          Iterables.getOnlyElement(jobtracker).getPublicHostName()));
+        preferredHostname(getOnlyElement(jobtracker),clusterSpec)));
     }
 
     return config;

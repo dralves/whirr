@@ -21,7 +21,6 @@ package org.apache.whirr.service.hadoop;
 import com.google.common.collect.Iterables;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.Set;
 
 import org.apache.whirr.Cluster;
@@ -35,30 +34,17 @@ public class HadoopCluster {
   public static final int JOBTRACKER_PORT = 8021;
   public static final int JOBTRACKER_WEB_UI_PORT = 50030;
   
-  public static InetAddress getNamenodePublicAddress(Cluster cluster) throws IOException {
+  public static Instance getNamenode(Cluster cluster) throws IOException {
     return cluster.getInstanceMatching(
-        RolePredicates.role(HadoopNameNodeClusterActionHandler.ROLE))
-        .getPublicAddress();
+        RolePredicates.role(HadoopNameNodeClusterActionHandler.ROLE));
   }
-  public static InetAddress getNamenodePrivateAddress(Cluster cluster) throws IOException {
-    return cluster.getInstanceMatching(
-        RolePredicates.role(HadoopNameNodeClusterActionHandler.ROLE))
-        .getPrivateAddress();
-  }
-  private static Instance getJobTracker(Cluster cluster) {
+
+  public static Instance getJobTracker(Cluster cluster) {
     Set<Instance> jobtracker = cluster.getInstancesMatching(
         RolePredicates.role(HadoopJobTrackerClusterActionHandler.ROLE));
     if (jobtracker.isEmpty()) {
       return null;
     }
     return Iterables.getOnlyElement(jobtracker);
-  }
-  public static InetAddress getJobTrackerPublicAddress(Cluster cluster) throws IOException {
-    Instance jt = getJobTracker(cluster);
-    return jt == null ? null : jt.getPublicAddress();
-  }
-  public static InetAddress getJobTrackerPrivateAddress(Cluster cluster) throws IOException {
-    Instance jt = getJobTracker(cluster);
-    return jt == null ? null : jt.getPrivateAddress();
   }
 }

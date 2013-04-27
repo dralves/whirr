@@ -74,7 +74,7 @@ public class HamaMasterClusterActionHandler extends HamaClusterActionHandler {
         HamaConstants.FUNCTION_POST_CONFIGURE);
 
     String master = masterPublicAddress.getHostName();
-    String quorum = ZooKeeperCluster.getHosts(cluster);
+    String quorum = ZooKeeperCluster.getHosts(cluster, clusterSpec);
 
     String tarurl = prepareRemoteFileUrl(event, getConfiguration(clusterSpec)
         .getString(HamaConstants.KEY_TARBALL_URL));
@@ -104,7 +104,7 @@ public class HamaMasterClusterActionHandler extends HamaClusterActionHandler {
     LOG.info("BSPMaster web UI available at http://{}:{}", masterPublicAddress
         .getHostName(), MASTER_WEB_UI_PORT);
 
-    String quorum = ZooKeeperCluster.getHosts(cluster);
+    String quorum = ZooKeeperCluster.getHosts(cluster, clusterSpec);
     Properties config = createClientSideProperties(masterPublicAddress, quorum);
     createClientSideHadoopSiteFile(clusterSpec, config);
     createProxyScript(clusterSpec, cluster);
